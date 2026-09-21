@@ -1,0 +1,35 @@
+# youtube-transcripts
+
+Análisis de contenido hablado de videos públicos de YouTube, al estilo
+NotebookLM pero 100% gratis y sin APIs de pago. Módulo Python que expone
+transcripción con timestamps vía tools MCP en brain-ai-01.
+
+## Estado
+
+Planificación (Fases 1-4). Ver `docs/TAREAS_YOUTUBE.md`.
+
+## Estructura
+
+| Ruta | Contenido |
+|------|-----------|
+| `docs/TAREAS_YOUTUBE.md` | Plan, fases, criterios de aceptación |
+| `docs/investigacion-youtube/` | 4 docs de investigación externa |
+| `services/` | Código del pipeline (vacío hasta Fase 1) |
+| `tests/` | Tests pytest (desde Fase 1) |
+| `requirements.txt` | Dependencias (versiones se fijan en Fase 1) |
+| `.ai/` | Contexto del proyecto para el agente |
+
+## Pipeline (resumen)
+
+```
+youtube-transcript-api (captions)
+  → yt-dlp subtítulos
+    → yt-dlp audio + faster-whisper local
+      → SQLite caché + jobs + FTS5
+        → tools MCP: transcript / status / read / search
+```
+
+## Integración
+
+El código se desarrolla aquí como módulo propio y se integra a
+`brain-ai-01` (servidor MCP central, carpeta hermana) al final de cada fase.

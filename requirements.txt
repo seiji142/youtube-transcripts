@@ -1,0 +1,8 @@
+# Dependencias de youtube-transcripts
+# Las versiones se fijan en Fase 1 tras validar con el Python de brain-ai-01.
+# Ver docs/TAREAS_YOUTUBE.md seccion 7.
+
+youtube-transcript-api
+yt-dlp
+faster-whisper
+pytest

@@ -1,0 +1,183 @@
+# Tareas - Análisis de Videos YouTube en brain-ai-01
+Ultima actualizacion: 21/09/2026
+
+---
+
+## 1. Objetivo
+
+Permitir que el asistente analice el contenido hablado de videos públicos de
+YouTube a partir de su URL: extraer la transcripción (con timestamps),
+cachearla, buscar fragmentos relevantes y responder con citas temporales,
+al estilo NotebookLM pero 100% gratis y sin APIs de pago.
+
+Alcance v1: videos públicos, español e inglés, sin autenticación,
+sin playlists, sin directos, duración máxima 2h. Sin análisis visual
+(solo audio/habla). Sin componente UI en el portfolio (es estático);
+la integración visual se definirá después del v1.
+
+---
+
+## 2. Cómo llegamos a esta solución
+
+1. Pregunta inicial: "si te paso un link de youtube puedes analizar el contenido?"
+2. Verificación propia: `webfetch`/`websearch` solo sirven para metadatos;
+   no procesan audio/video.
+3. Investigación web: NotebookLM no transcribe audio, solo importa captions
+   existentes de YouTube. Su valor real es el RAG sobre la transcripción.
+4. Investigación externa (4 docs en `docs/investigacion-youtube/`):
+   - `youtube tras-gpt-5.6-01.md` — pipeline escalonado + correcciones
+     (u-transkript no es fallback real; API oficial no sirve; faster-whisper
+     local no necesita key) + arquitectura + riesgos + plan en 4 fases.
+   - `youtube tras-gpt-5.6-02.md` — solución 100% gratis + código base
+     `YouTubeService` + jobs SQLite + chunking/FTS5 + visual opcional.
+   - `youtube-trans-clau-45-01.md` — comparativa 5 opciones + código
+     `yt_analyze` + hook/componente React + tests pytest.
+   - `youtube-trans-clau-45-02.md` — solución 100% gratis + `youtube_analyzer.py`
+     completo con NLP local (spacy/nltk) + FastAPI + MCP.
+5. Síntesis propia: convergencia en pipeline captions → yt-dlp → faster-whisper,
+   SQLite, 4 tools MCP, por fases. Fuera del v1: contenido visual y UI React.
+
+---
+
+## 3. Decisión de arquitectura
+
+Pipeline escalonado (el primero que tenga éxito gana):
+
+1. `youtube-transcript-api` — captions existentes (rápido, ~2s).
+2. `yt-dlp` — subtítulos manuales/automáticos sin descargar video.
+3. `yt-dlp` (solo audio) + `faster-whisper` local (modelo `small`,
+   CPU int8) — fallback real sin captions.
+4. ASR externo (OpenAI/Deepgram) — solo como adaptador opcional, no obligatorio.
+
+Infraestructura: SQLite (caché + jobs + FTS5), worker separado para ASR,
+sin Redis/PostgreSQL/servicios pagos. Solo videos públicos en v1.
+
+Orden de preferencia de pistas:
+manuales idioma pedido → manuales original → automáticas pedido →
+automáticas original → traducción → ASR. Siempre guardar idioma, fuente,
+manual/auto, motor y fecha.
+
+---
+
+## 4. Pros y contras
+
+### Pros
+- 100% gratis, sin API keys obligatorias, todo local/offline tras descargas.
+- Funciona en Windows, integra directo con Python/FastAPI/MCP.
+- Cubre ~85% de videos en segundos (captions) y el resto con ASR local.
+- SQLite: sin infraestructura adicional.
+- Diseño por fases: valor desde Fase 1.
+
+### Contras / riesgos
+- YouTube puede bloquear IP / HTTP 429 (más en cloud que en residencial).
+- `youtube-transcript-api` y `yt-dlp` usan endpoints no oficiales:
+  mantenimiento continuo, fijar versiones + tests de integración.
+- ASR en CPU tarda minutos en videos largos (jobs async obligatorios).
+- Sin captions + ASR: timestamps menos precisos, errores en nombres propios.
+- ToS/copyright: solo a petición, borrar audio, no redistribuir.
+- No cubre contenido puramente visual (diapositivas sin narración) en v1.
+
+### Descartado y por qué
+- API oficial `captions.download`: requiere OAuth y permisos sobre el video.
+- `u-transkript` como fallback: sigue necesitando pista de subtítulos.
+- `notebooklm-client` / cookies Google: frágil, sesiones que expiran,
+  riesgo de bloqueo, no apto para producción.
+- `YouTubeTranscript.dev` como base: coste recurrente (dejar como opción).
+- OpenAI Whisper API como obligatorio: rompe requisito gratis (opcional OK).
+
+---
+
+## 5. Plan de implementación por fases
+
+### FASE 1 — MVP captions (valor inmediato)
+- [ ] Parser seguro de URLs (hosts permitidos, validación ID 11 chars,
+      sin `shell=True`, sin flags arbitrarios)
+- [ ] Integrar `youtube-transcript-api` (selección es/en, manual > auto)
+- [ ] Normalizar segmentos `{start, end, text}` + metadatos
+      (idioma, fuente, fecha)
+- [ ] Caché SQLite por `video_id + idioma + tipo`
+- [ ] Tool MCP `youtube_transcript` (sync, timeout corto)
+- [ ] Límites: duración máxima, sin playlists, sin directos
+- [ ] Errores estructurados (distinguir "sin captions" de "bloqueado")
+- [ ] Verificación: 3 videos ES + 3 EN con captions → texto + timestamps
+
+### FASE 2 — Fallback real (videos sin captions)
+- [ ] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
+- [ ] Descarga solo-audio (`bestaudio`, template controlado, temp aislado)
+- [ ] Instalar FFmpeg (winget/Choco) y `faster-whisper` (`small`, cpu, int8)
+- [ ] Tabla `youtube_jobs` en SQLite + worker separado (no solo
+      BackgroundTasks: durable, heartbeat, reintentos con backoff)
+- [ ] Tools MCP `youtube_transcript_status` + lectura paginada
+      (`youtube_transcript_read` con `start/end/max_chars`)
+- [ ] Limpieza automática de audio y temporales + política LRU
+- [ ] Verificación: video sin captions → `processing` → `completed`,
+      texto en español correcto
+
+### FASE 3 — Experiencia tipo NotebookLM (RAG)
+- [ ] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
+      con timestamps
+- [ ] Índice SQLite FTS5 (`transcript_chunks_fts`)
+- [ ] Tool MCP `youtube_transcript_search` (`transcript_id`, `query`, `top_k`)
+- [ ] Respuestas con citas temporales
+      (`https://www.youtube.com/watch?v=ID&t=620s`)
+- [ ] Resúmenes jerárquicos para videos largos
+- [ ] Verificación: preguntar sobre un video largo y recibir fragmentos
+      citados, no la transcripción entera
+
+### FASE 4 — Resiliencia y operación
+- [ ] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
+      `YtDlpSubtitleProvider`, `FasterWhisperProvider`,
+      `ExternalAsrProvider` opcional) con enable/disable por config
+- [ ] Circuit breaker + backoff con jitter tras 429
+- [ ] Métricas por proveedor + endpoint de salud
+- [ ] Tests de integración periódicos con videos públicos fijos
+- [ ] Cuotas por usuario, concurrencia máxima, retención documentada
+- [ ] Documentar decisión en memoria (`brain-ai_memory_save`)
+
+---
+
+## 6. Fuera del alcance del v1
+
+- Análisis visual (frames/OCR/modelo local): futura Fase 5.
+- Componente UI React en el portfolio: se definirá después del v1.
+- Proveedor ASR externo como dependencia obligatoria: solo adaptador opcional.
+
+---
+
+## 7. Dependencias
+
+```
+youtube-transcript-api
+yt-dlp
+faster-whisper
+FFmpeg (sistema, winget/Choco)
+SQLite (stdlib) + FTS5
+```
+
+Fijar versiones en `requirements.txt` tras validar con el Python de
+brain-ai-01. No fijar precios de proveedores en código (tratar como config).
+
+---
+
+## 8. Criterios de aceptación v1 (Fases 1-4)
+
+- [ ] Video ES con captions → transcripción en <10s vía MCP
+- [ ] Video EN con captions → transcripción con idioma detectado
+- [ ] Video sin captions → job async → transcripción local correcta
+- [ ] Video largo → `search` devuelve chunks citados con `&t=`
+- [ ] Repetir mismo video usa caché (sin re-extracción)
+- [ ] URL inválida / video privado / playlist → error claro, sin crash
+- [ ] Audio temporal siempre eliminado tras ASR
+
+---
+
+## 9. Referencias
+
+- `investigacion-youtube/youtube tras-gpt-5.6-01.md`
+- `investigacion-youtube/youtube tras-gpt-5.6-02.md`
+- `investigacion-youtube/youtube-trans-clau-45-01.md`
+- `investigacion-youtube/youtube-trans-clau-45-02.md`
+- https://github.com/jdepoix/youtube-transcript-api
+- https://github.com/yt-dlp/yt-dlp
+- https://github.com/SYSTRAN/faster-whisper
+- https://developers.google.com/youtube/v3/docs/captions/download
