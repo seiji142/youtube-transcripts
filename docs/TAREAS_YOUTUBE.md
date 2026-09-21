@@ -128,9 +128,9 @@ manual/auto, motor y fecha.
       (distinguir "sin captions" de "bloqueado" explícitamente)
       — hecho antes que el parser para que este lance errores tipados;
       6 tests unitarios en verde (`tests/test_youtube_errors.py`)
-- [ ] `services/youtube_cache.py` — caché SQLite en `data/youtube.db`
+- [x] `services/youtube_cache.py` — caché SQLite en `data/youtube.db`
       (clave `video_id + lang + track_type`, TTL 7 días, gitignore
-      `data/`)
+      `data/`) — 9 tests en verde (`tests/test_youtube_cache.py`)
 - [ ] `services/youtube_service.py` — orquestador
       (dataclasses `TranscriptSegment{start,end,text}` y
       `TranscriptResult`, selección pistas manual > auto y es > en,
