@@ -131,11 +131,12 @@ manual/auto, motor y fecha.
 - [x] `services/youtube_cache.py` — caché SQLite en `data/youtube.db`
       (clave `video_id + lang + track_type`, TTL 7 días, gitignore
       `data/`) — 9 tests en verde (`tests/test_youtube_cache.py`)
-- [ ] `services/youtube_service.py` — orquestador
+- [x] `services/youtube_service.py` — orquestador
       (dataclasses `TranscriptSegment{start,end,text}` y
       `TranscriptResult`, selección pistas manual > auto y es > en,
       límite duración 2h, mapeo de excepciones de la librería a
-      nuestros códigos de error)
+      nuestros códigos de error) — 16 tests unitarios con mock
+      (`tests/test_youtube_service.py`), sin red
 - [ ] `mcp_server.py` — servidor MCP propio, tool `youtube_transcript`
       (sync, timeout corto, args: `url`, `languages`, `include_timestamps`;
       respuesta `completed` con segmentos o `error` con code/suggestion)
