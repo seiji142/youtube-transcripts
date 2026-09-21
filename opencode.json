@@ -39,6 +39,14 @@
       "type": "local",
       "command": ["python", "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\brain-ai-01\\mcp_bridge.py"],
       "enabled": true
+    },
+    "youtube-transcripts": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\.venv\\Scripts\\python.exe",
+        "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\mcp_server.py"
+      ],
+      "enabled": true
     }
   }
 }

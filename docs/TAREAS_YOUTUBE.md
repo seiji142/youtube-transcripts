@@ -137,10 +137,12 @@ manual/auto, motor y fecha.
       límite duración 2h, mapeo de excepciones de la librería a
       nuestros códigos de error) — 16 tests unitarios con mock
       (`tests/test_youtube_service.py`), sin red
-- [ ] `mcp_server.py` — servidor MCP propio, tool `youtube_transcript`
+- [x] `mcp_server.py` — servidor MCP propio, tool `youtube_transcript`
       (sync, timeout corto, args: `url`, `languages`, `include_timestamps`;
       respuesta `completed` con segmentos o `error` con code/suggestion)
-- [ ] Registrar servidor MCP en `opencode.json`
+      — MCPServer (mcp 2.x), 6 tests (`tests/test_mcp_server.py`)
+- [x] Registrar servidor MCP en `opencode.json` (transporte stdio,
+      `.venv` local, independiente de brain-ai-01)
 - [ ] Tests unitarios sin red: parser (IDs válidos/inválidos, playlists,
       live, hosts), caché (hit/miss/TTL), errores, selección de pistas
       con mock — cobertura ≥80%
