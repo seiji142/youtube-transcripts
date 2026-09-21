@@ -122,9 +122,11 @@ manual/auto, motor y fecha.
       `/watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`,
       ID `[A-Za-z0-9_-]{11}`, rechazo playlists `?list=` y directos
       `/live/`, sin `shell=True`)
-- [ ] `services/youtube_errors.py` — errores estructurados:
+- [x] `services/youtube_errors.py` — errores estructurados:
       `invalid_url` / `no_captions` / `blocked` / `duration_exceeded`
       (distinguir "sin captions" de "bloqueado" explícitamente)
+      — hecho antes que el parser para que este lance errores tipados;
+      6 tests unitarios en verde (`tests/test_youtube_errors.py`)
 - [ ] `services/youtube_cache.py` — caché SQLite en `data/youtube.db`
       (clave `video_id + lang + track_type`, TTL 7 días, gitignore
       `data/`)
