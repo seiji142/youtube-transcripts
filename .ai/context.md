@@ -3,7 +3,8 @@
 ## Stack Tecnologico
 
 - **Lenguaje:** Python 3.10+
-- **Servidor MCP:** brain-ai-01 (FastAPI, carpeta hermana, servidor central)
+- **Servidor MCP:** propio (`mcp_server.py` en este repo), independiente
+  de brain-ai-01 (no todos los consumidores necesitan ambos)
 - **Extracción:** youtube-transcript-api → yt-dlp → faster-whisper (ver plan)
 - **Base de datos:** SQLite (caché + jobs + FTS5, sin servidor externo)
 - **Sistema:** Windows (winget/Choco para FFmpeg)
@@ -12,10 +13,11 @@
 
 Versiones se fijan en Fase 1 (ver `docs/TAREAS_YOUTUBE.md` seccion 7):
 
-- `youtube-transcript-api` (captions, primera ruta)
-- `yt-dlp` (subtítulos + descarga solo-audio)
-- `faster-whisper` (ASR local, modelo `small`, CPU int8)
-- `pytest` (tests)
+- `youtube-transcript-api==1.2.4` (captions, primera ruta, API v1.x)
+- `mcp` (servidor MCP propio)
+- `yt-dlp` (subtítulos + descarga solo-audio) — Fase 2
+- `faster-whisper` (ASR local, modelo `small`, CPU int8) — Fase 2
+- `pytest`, `pytest-asyncio` (tests)
 
 ## Variables de Entorno
 
@@ -28,7 +30,7 @@ Pipeline escalonado: el primer proveedor que tenga éxito gana.
 Orden: captions → subtítulos yt-dlp → audio + faster-whisper → (opcional) ASR externo.
 Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 
-### Tools MCP (en brain-ai-01, implementadas por fases)
+### Tools MCP (servidor propio, implementadas por fases)
 
 | Tool | Fase | Funcion |
 |------|------|---------|
@@ -42,6 +44,7 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 | Tipo | Destino | Ejemplo |
 |------|---------|---------|
 | Servicios/pipeline | `services/` | `youtube_service.py` |
+| Servidor MCP | raíz | `mcp_server.py` |
 | Tests | `tests/` | `test_youtube_service.py` |
 | Docs de plan | `docs/` | `TAREAS_YOUTUBE.md` |
 | Investigación | `docs/investigacion-youtube/` | `youtube tras-gpt-5.6-01.md` |

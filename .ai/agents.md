@@ -2,7 +2,7 @@
 
 ## Agente de Backend
 Especializado en Python, FastAPI, MCP y SQLite. Responsable de servicios,
-pipeline de extracción, jobs async y tools MCP en brain-ai-01.
+pipeline de extracción, jobs async y servidor MCP propio (`mcp_server.py`).
 
 ## Agente de Testing
 Especializado en pytest, cobertura y tests de integración con videos

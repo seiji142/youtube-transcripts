@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "groq/openai/gpt-oss-20b",
+  "provider": {
+    "groq": {
+      "models": {
+        "openai/gpt-oss-20b": {
+          "options": {
+            "temperature": 0.7,
+            "max_tokens": 4000
+          }
+        }
+      }
+    }
+  },
+  "instructions": [
+    ".ai/system.md",
+    ".ai/rules.md",
+    ".ai/context.md",
+    ".ai/agents.md",
+    ".ai/MEMORY.md"
+  ],
+  "permission": {
+    "bash": "allow",
+    "webfetch": "ask",
+    "write": "ask",
+    "edit": "ask"
+  },
+  "mcp": {
+    "git_publisher": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\seiji\\.config\\opencode\\herramientas\\.venv\\Scripts\\python.exe",
+        "C:\\Users\\seiji\\.config\\opencode\\herramientas\\git_tool.py"
+      ],
+      "enabled": true
+    },
+    "brain-ai": {
+      "type": "local",
+      "command": ["python", "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\brain-ai-01\\mcp_bridge.py"],
+      "enabled": true
+    }
+  }
+}
