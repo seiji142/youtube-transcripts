@@ -1,0 +1,13 @@
+# Datos locales (SQLite, temporales)
+data/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Opencode local (opcional)
+# opencode.json

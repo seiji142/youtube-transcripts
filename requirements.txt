@@ -1,8 +1,8 @@
 # Dependencias de youtube-transcripts
-# Las versiones se fijan en Fase 1 tras validar con el Python local (3.10.7).
-# Ver docs/TAREAS_YOUTUBE.md seccion 7.
+# Instalar en venv local: python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+# Python 3.10.7 — ver docs/TAREAS_YOUTUBE.md seccion 7.
 
-youtube-transcript-api
-yt-dlp
-faster-whisper
+youtube-transcript-api==1.2.4
+mcp
 pytest
+pytest-asyncio

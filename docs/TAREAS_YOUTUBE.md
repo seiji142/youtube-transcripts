@@ -112,10 +112,11 @@ manual/auto, motor y fecha.
 ## 5. Plan de implementación por fases
 
 ### FASE 1 — MVP captions (servidor MCP propio)
-- [ ] Estructura base: `services/`, `tests/`, `data/`, `__init__.py`
-- [ ] Dependencias: instalar y fijar `youtube-transcript-api==1.2.4`
+- [x] Estructura base: `services/`, `tests/`, `data/`, `__init__.py`
+- [x] Dependencias: instalar y fijar `youtube-transcript-api==1.2.4`
       (API moderna v1.x `fetch()`, no legacy 0.6.x), `pytest`,
       `pytest-asyncio`, `mcp`
+- [x] `.gitignore` (`data/`, `.venv/`, `__pycache__/`, `*.db`)
 - [ ] `services/youtube_urls.py` — parser seguro de URLs
       (whitelist hosts youtube.com/www/m/youtu.be, soporte
       `/watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`,
@@ -205,6 +206,11 @@ pytest, pytest-asyncio           # tests
 
 Fijar versiones en `requirements.txt` tras validar con el Python local
 (3.10.7). No fijar precios de proveedores en código (tratar como config).
+
+> **Instalar siempre en `.venv` local** (`.venv\Scripts\pip install -r requirements.txt`),
+> nunca en el Python global. Motivo: `mcp` arrastra `starlette>=0.49` y
+> rompe `fastapi` de brain-ai-01 (requiere `starlette<0.38`); ambos
+> comparten el mismo intérprete 3.10.7. Verificado 21/09/2026.
 
 ---
 
