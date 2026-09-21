@@ -117,11 +117,12 @@ manual/auto, motor y fecha.
       (API moderna v1.x `fetch()`, no legacy 0.6.x), `pytest`,
       `pytest-asyncio`, `mcp`
 - [x] `.gitignore` (`data/`, `.venv/`, `__pycache__/`, `*.db`)
-- [ ] `services/youtube_urls.py` — parser seguro de URLs
+- [x] `services/youtube_urls.py` — parser seguro de URLs
       (whitelist hosts youtube.com/www/m/youtu.be, soporte
       `/watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`,
       ID `[A-Za-z0-9_-]{11}`, rechazo playlists `?list=` y directos
-      `/live/`, sin `shell=True`)
+      `/live/`, sin `shell=True`) — 35 tests en verde
+      (`tests/test_youtube_urls.py`), lanza `InvalidYouTubeUrl`
 - [x] `services/youtube_errors.py` — errores estructurados:
       `invalid_url` / `no_captions` / `blocked` / `duration_exceeded`
       (distinguir "sin captions" de "bloqueado" explícitamente)
