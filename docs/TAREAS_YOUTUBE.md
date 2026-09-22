@@ -143,11 +143,17 @@ manual/auto, motor y fecha.
       — MCPServer (mcp 2.x), 6 tests (`tests/test_mcp_server.py`)
 - [x] Registrar servidor MCP en `opencode.json` (transporte stdio,
       `.venv` local, independiente de brain-ai-01)
-- [ ] Tests unitarios sin red: parser (IDs válidos/inválidos, playlists,
+- [x] Tests unitarios sin red: parser (IDs válidos/inválidos, playlists,
       live, hosts), caché (hit/miss/TTL), errores, selección de pistas
-      con mock — cobertura ≥80%
-- [ ] Tests integración con red: 3 videos ES + 3 EN con captions →
+      con mock — cobertura ≥80% — **72/72 en verde**
+- [~] Tests integración con red: 3 videos ES + 3 EN con captions →
       texto + timestamps; video sin captions → `no_captions`
+      — `tests/test_integration.py` creado (8 tests, marcador
+      `integration`), videos fijados y verificados; **pendiente
+      ejecución limpia**: YouTube rate-limitó la IP (HTTP 429) tras
+      el sondeo de candidatos; tests skipan ante `blocked` tras 3
+      reintentos con backoff (riesgo §4). Reintentar cuando levante
+      el bloqueo: `pytest tests/test_integration.py -m integration`
 - [ ] Actualizar `README.md` y `.ai/context.md` (servidor MCP propio,
       ya no "tools MCP en brain-ai-01")
 - [ ] Guardar decisión en memoria (`brain_ai_memory_save`)
