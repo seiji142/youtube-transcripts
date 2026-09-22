@@ -163,7 +163,8 @@ manual/auto, motor y fecha.
       `.venv` local, independiente de brain-ai-01)
 - [x] Tests unitarios sin red: parser (IDs válidos/inválidos, playlists,
       live, hosts), caché (hit/miss/TTL), errores, selección de pistas
-      con mock — cobertura ≥80% — **72/72 en verde**
+      con mock — cobertura ≥80% — **83/83 en verde** (incluye
+      RateLimiter y MCP server)
 - [~] Tests integración con red: 3 videos ES + 3 EN con captions →
       texto + timestamps; video sin captions → `no_captions`
       — `tests/test_integration.py` creado (8 tests, marcador
@@ -172,6 +173,7 @@ manual/auto, motor y fecha.
       el sondeo de candidatos; tests skipan ante `blocked` tras 3
       reintentos con backoff (riesgo §4). Reintentar cuando levante
       el bloqueo: `pytest tests/test_integration.py -m integration`
+      — **tarea aparte del cierre de Fase 1**
 - [x] `services/youtube_rate_limit.py` — RateLimiter preventivo
       (propuesto tras incidente 429, ver §4): **1s mínimo entre
       requests** + **máx 10 req / 60s**; integrado en
@@ -181,10 +183,13 @@ manual/auto, motor y fecha.
 - [x] Tests unitarios del RateLimiter (respeta intervalo, ventana,
       deshabilitado no espera) + 2 tests de integración con
       `YouTubeService` (acquire en miss, no en hit, enabled=False)
-- [ ] Actualizar `README.md` y `.ai/context.md` (servidor MCP propio,
+- [x] Actualizar `README.md` y `.ai/context.md` (servidor MCP propio,
       ya no "tools MCP en brain-ai-01")
-- [ ] Guardar decisión en memoria (`brain_ai_memory_save`)
-- [ ] Verificación: `pytest tests/ -v` en verde + criterios Fase 1
+- [x] Guardar decisión en memoria (`brain_ai_memory_save`)
+- [x] Verificación offline: `pytest -m "not integration"` en verde
+      (**83/83**); brain-ai-01 no modificado; git limpio.
+      Integración con red queda como **tarea aparte** (ver checkbox
+      `[~]` de tests integración)
 
 ### FASE 2 — Fallback real (videos sin captions)
 - [ ] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
@@ -257,14 +262,21 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
 
 ## 8. Criterios de aceptación v1 (Fases 1-4)
 
-- [ ] Video ES con captions → transcripción en <10s vía servidor MCP propio
-- [ ] Video EN con captions → transcripción con idioma detectado
+- [~] Video ES con captions → transcripción en <10s vía servidor MCP propio
+      — verificado offline con mocks; pendiente suite integración
+- [~] Video EN con captions → transcripción con idioma detectado
+      — verificado offline con mocks; pendiente suite integración
 - [ ] Video sin captions → job async → transcripción local correcta
+      — **Fase 2** (no aplica aún)
 - [ ] Video largo → `search` devuelve chunks citados con `&t=`
-- [ ] Repetir mismo video usa caché (sin re-extracción)
-- [ ] URL inválida / video privado / playlist → error claro, sin crash
+      — **Fase 3** (no aplica aún)
+- [x] Repetir mismo video usa caché (sin re-extracción)
+      — tests unit + demo `data/probe.db`
+- [x] URL inválida / video privado / playlist → error claro, sin crash
+      — 35 tests parser + 6 tests errores
 - [ ] Audio temporal siempre eliminado tras ASR
-- [ ] brain-ai-01 no modificado en Fase 1
+      — **Fase 2** (no aplica aún)
+- [x] brain-ai-01 no modificado en Fase 1
 
 ---
 
