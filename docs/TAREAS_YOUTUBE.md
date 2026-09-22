@@ -95,6 +95,24 @@ manual/auto, motor y fecha.
 - No cubre contenido puramente visual (diapositivas sin narración) en v1.
 - Un proceso MCP más que mantener (frente al server central único).
 
+#### Incidente 429 (21/09/2026) — rate limit por volumen
+
+- **Qué pasó:** sondeo de ~25 videos en ráfaga (~50 HTTP requests en
+  ~5-8 min, sin pausa entre llamadas) → YouTube devolvió HTTP 429 /
+  `IpBlocked`. Los tests de integración no pudieron completarse
+  (1 passed / 7 skipped).
+- **Diagnóstico:** throttling por volumen desde IP residencial
+  (no era bloqueo de cloud/ASN ni IP permanentemente baneada).
+- **Umbral:** YouTube **no publica** req/min; cualquier cifra exacta
+  es inventada. Consenso comunidad: **≥1s entre requests**.
+- **Cobertura actual:** el código detecta/clasifica bien el 429
+  (`blocked` estructurado), la caché evita refetch, los tests de
+  integración skipan ante bloqueo persistente — pero **no previene**
+  la ráfaga en producción.
+- **Decisión:** añadir `RateLimiter` preventivo en Fase 1
+  (ver §5); circuit breaker + backoff siguen en Fase 4 como
+  red de seguridad, no como prevención primaria.
+
 ### Descartado y por qué
 - API oficial `captions.download`: requiere OAuth y permisos sobre el video.
 - `u-transkript` como fallback: sigue necesitando pista de subtítulos.
@@ -154,6 +172,13 @@ manual/auto, motor y fecha.
       el sondeo de candidatos; tests skipan ante `blocked` tras 3
       reintentos con backoff (riesgo §4). Reintentar cuando levante
       el bloqueo: `pytest tests/test_integration.py -m integration`
+- [ ] `services/youtube_rate_limit.py` — RateLimiter preventivo
+      (propuesto tras incidente 429, ver §4): **1s mínimo entre
+      requests** + **máx 10 req / 60s**; integrar en
+      `YouTubeService.get_transcript()` solo en cache miss;
+      deshabilitable para tests unitarios con mock
+- [ ] Tests unitarios del RateLimiter (respeta intervalo, ventana,
+      deshabilitado no espera)
 - [ ] Actualizar `README.md` y `.ai/context.md` (servidor MCP propio,
       ya no "tools MCP en brain-ai-01")
 - [ ] Guardar decisión en memoria (`brain_ai_memory_save`)
@@ -186,7 +211,9 @@ manual/auto, motor y fecha.
 - [ ] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
       `YtDlpSubtitleProvider`, `FasterWhisperProvider`,
       `ExternalAsrProvider` opcional) con enable/disable por config
-- [ ] Circuit breaker + backoff con jitter tras 429
+- [ ] Circuit breaker + backoff con jitter tras 429 — **red de
+      seguridad**, no prevención primaria (la prevención es el
+      RateLimiter de Fase 1, ver §4 incidente 429)
 - [ ] Métricas por proveedor + endpoint de salud
 - [ ] Tests de integración periódicos con videos públicos fijos
 - [ ] Cuotas por usuario, concurrencia máxima, retención documentada
