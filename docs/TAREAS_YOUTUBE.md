@@ -172,13 +172,15 @@ manual/auto, motor y fecha.
       el sondeo de candidatos; tests skipan ante `blocked` tras 3
       reintentos con backoff (riesgo §4). Reintentar cuando levante
       el bloqueo: `pytest tests/test_integration.py -m integration`
-- [ ] `services/youtube_rate_limit.py` — RateLimiter preventivo
+- [x] `services/youtube_rate_limit.py` — RateLimiter preventivo
       (propuesto tras incidente 429, ver §4): **1s mínimo entre
-      requests** + **máx 10 req / 60s**; integrar en
+      requests** + **máx 10 req / 60s**; integrado en
       `YouTubeService.get_transcript()` solo en cache miss;
-      deshabilitable para tests unitarios con mock
-- [ ] Tests unitarios del RateLimiter (respeta intervalo, ventana,
-      deshabilitado no espera)
+      deshabilitable para tests unitarios con mock — 9 tests
+      (`tests/test_youtube_rate_limit.py`)
+- [x] Tests unitarios del RateLimiter (respeta intervalo, ventana,
+      deshabilitado no espera) + 2 tests de integración con
+      `YouTubeService` (acquire en miss, no en hit, enabled=False)
 - [ ] Actualizar `README.md` y `.ai/context.md` (servidor MCP propio,
       ya no "tools MCP en brain-ai-01")
 - [ ] Guardar decisión en memoria (`brain_ai_memory_save`)

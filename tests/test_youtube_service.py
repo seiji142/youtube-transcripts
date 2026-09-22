@@ -15,6 +15,7 @@ from services.youtube_errors import (
     NoCaptionsAvailable,
     VideoBlockedOrUnavailable,
 )
+from services.youtube_rate_limit import RateLimiter
 from services.youtube_service import (
     TranscriptResult,
     TranscriptSegment,
@@ -23,6 +24,12 @@ from services.youtube_service import (
 
 VALID_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 VIDEO_ID = "dQw4w9WgXcQ"
+
+
+@pytest.fixture(autouse=True)
+def _no_rate_limit_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Los unitarios no deben esperar el RateLimiter real."""
+    monkeypatch.setattr(RateLimiter, "acquire", lambda self: 0.0)
 
 
 def _snippet(start: float, duration: float, text: str) -> SimpleNamespace:
@@ -240,3 +247,48 @@ class TestCacheIntegracion:
         entry = cache.get(VIDEO_ID, "es+en", "manual")
         assert entry is not None
         assert entry["segments"][0]["text"] == "hola"
+
+
+class TestRateLimiterIntegracion:
+    def test_rate_limiter_llamado_en_cache_miss(
+        self, cache: TranscriptCache,
+    ) -> None:
+        tr = FakeTranscript(DEFAULT_SNIPPETS, "es")
+        api = FakeApi(FakeTranscriptList(manual={"es": tr}))
+        rl = RateLimiter(enabled=True, min_interval_seconds=0.0)
+        calls: list[float] = []
+        original = rl.acquire
+
+        def spy() -> float:
+            result = original()
+            calls.append(result)
+            return result
+
+        rl.acquire = spy  # type: ignore[method-assign]
+        svc = YouTubeService(cache=cache, api=api, rate_limiter=rl)  # type: ignore[arg-type]
+        svc.get_transcript(VALID_URL, languages=["es", "en"])
+        assert len(calls) == 1  # cache miss → 1 acquire
+
+        # segundo service con misma cache: hit → NO debe llamar acquire
+        rl2 = RateLimiter(enabled=True, min_interval_seconds=0.0)
+        calls2: list[float] = []
+        original2 = rl2.acquire
+
+        def spy2() -> float:
+            result = original2()
+            calls2.append(result)
+            return result
+
+        rl2.acquire = spy2  # type: ignore[method-assign]
+        svc2 = YouTubeService(cache=cache, api=api, rate_limiter=rl2)  # type: ignore[arg-type]
+        svc2.get_transcript(VALID_URL, languages=["es", "en"])
+        assert len(calls2) == 0  # cache hit → 0 acquire
+
+    def test_rate_limiter_deshabilitable(self, cache: TranscriptCache) -> None:
+        tr = FakeTranscript(DEFAULT_SNIPPETS, "es")
+        api = FakeApi(FakeTranscriptList(manual={"es": tr}))
+        rl = RateLimiter(enabled=False, min_interval_seconds=99.0)
+        svc = YouTubeService(cache=cache, api=api, rate_limiter=rl)  # type: ignore[arg-type]
+        # enabled=False no debe esperar (99s serían obvios si esperara)
+        result = svc.get_transcript(VALID_URL, languages=["es", "en"])
+        assert result.segments

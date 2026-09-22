@@ -30,6 +30,7 @@ from services.youtube_errors import (
     TranscriptError,
     VideoBlockedOrUnavailable,
 )
+from services.youtube_rate_limit import RateLimiter
 from services.youtube_urls import extract_video_id
 
 MAX_DURATION_SECONDS = 7200  # 2 horas
@@ -159,11 +160,15 @@ class YouTubeService:
         languages: tuple[str, ...] = DEFAULT_LANGUAGES,
         max_duration_seconds: int = MAX_DURATION_SECONDS,
         api: YouTubeTranscriptApi | None = None,
+        rate_limiter: RateLimiter | None = None,
     ) -> None:
         self.cache = cache
         self.languages = languages
         self.max_duration_seconds = max_duration_seconds
         self._api = api or YouTubeTranscriptApi()
+        # Rate limiter preventivo (1s / 10-min); None o enabled=False
+        # para tests unitarios con mock.
+        self.rate_limiter = rate_limiter if rate_limiter is not None else RateLimiter()
 
     def get_transcript(
         self,
@@ -186,6 +191,9 @@ class YouTubeService:
                 cached = self.cache.get(video_id, lang_key, track_type)
                 if cached is not None:
                     return self._result_from_cache(video_id, cached)
+
+        # Prevención 429: solo en cache miss (los hits no tocan YouTube)
+        self.rate_limiter.acquire()
 
         try:
             transcript_list = self._api.list(video_id)
