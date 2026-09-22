@@ -117,6 +117,33 @@ manual/auto, motor y fecha.
   Reset estimado en rango de horas. Dejar como tarea de próxima
   sesión; no insistir para no extender el bloqueo.
 
+#### Escenarios de bloqueo — no hay "cuenta" que banear
+
+**Aclaración:** no usamos cuenta de YouTube. `youtube-transcript-api`
+**no autentica** (sin login, sin cookies, sin API key). No existe ban
+de cuenta en nuestro flujo.
+
+| Tipo de bloqueo | ¿Nos aplica? | Tratamiento |
+|-----------------|--------------|-------------|
+| Rate limit 429 por volumen | ✅ (incidente 21/09) | Temporal; RateLimiter preventivo ya en Fase 1; esperar reset |
+| Ban de IP residencial | Poco probable (requiere uso agresivo sostenido) | Reiniciar router (IP dinámica → nueva IP); esperar 24-48h |
+| Ban de IP cloud/ASN | ❌ No (IP residencial, no AWS/GCP) | — |
+| Ban de cuenta Google | ❌ No existe (no hay cuenta en el flujo) | — |
+
+**Escalada si el bloqueo persiste (días):**
+
+1. Reiniciar router (gratis, IP dinámica)
+2. VPN gratuita (algunas IPs ya baneadas por YouTube; no garantizado)
+3. Caché local (videos ya fetcheados no necesitan YouTube)
+4. Proxy rotativo (Webshare, integrado en la lib) — **pago, rompe
+   "100% gratis"**; dejar como opción documentada, no para v1
+
+**Prohibido (riesgo real):**
+- ❌ Autenticar con cookies de cuenta Google: la lib lo permite pero
+  **YouTube banea la cuenta** — explícitamente no recomendado
+- ❌ Reintentar en loop: empeora el bloqueo
+- ❌ Proxies de pago como dependencia de v1
+
 ### Descartado y por qué
 - API oficial `captions.download`: requiere OAuth y permisos sobre el video.
 - `u-transkript` como fallback: sigue necesitando pista de subtítulos.
