@@ -112,6 +112,10 @@ manual/auto, motor y fecha.
 - **Decisión:** añadir `RateLimiter` preventivo en Fase 1
   (ver §5); circuit breaker + backoff siguen en Fase 4 como
   red de seguridad, no como prevención primaria.
+- **Update 21:55:** reintento a los ~55-58 min del primer 429 →
+  bloqueo **persiste** (1 video, RateLimiter activo, 1.6s, aún 429).
+  Reset estimado en rango de horas. Dejar como tarea de próxima
+  sesión; no insistir para no extender el bloqueo.
 
 ### Descartado y por qué
 - API oficial `captions.download`: requiere OAuth y permisos sobre el video.
@@ -171,9 +175,11 @@ manual/auto, motor y fecha.
       `integration`), videos fijados y verificados; **pendiente
       ejecución limpia**: YouTube rate-limitó la IP (HTTP 429) tras
       el sondeo de candidatos; tests skipan ante `blocked` tras 3
-      reintentos con backoff (riesgo §4). Reintentar cuando levante
-      el bloqueo: `pytest tests/test_integration.py -m integration`
-      — **tarea aparte del cierre de Fase 1**
+      reintentos con backoff (riesgo §4).
+      — **Reintento 21/09/2026 21:55**: Nivel 1 (1 video) tras
+      ~55-58 min del primer 429 → **sigue bloqueado**; se paró ahí
+      (criterio de corte, no martillear). TAREA PARA PRÓXIMA SESIÓN:
+      reintentar Nivel 1 → si OK, correr suite completa.
 - [x] `services/youtube_rate_limit.py` — RateLimiter preventivo
       (propuesto tras incidente 429, ver §4): **1s mínimo entre
       requests** + **máx 10 req / 60s**; integrado en
@@ -190,6 +196,14 @@ manual/auto, motor y fecha.
       (**83/83**); brain-ai-01 no modificado; git limpio.
       Integración con red queda como **tarea aparte** (ver checkbox
       `[~]` de tests integración)
+
+### TAREA PENDIENTE — Próxima sesión
+- [ ] Reintentar integración: `pytest tests/test_integration.py -m integration`
+      1. **Nivel 1:** sondeo de 1 video (verificar si levantó el 429)
+      2. Si **OK** → correr suite completa
+      3. Si **falla** → parar, no insistir (evitar extender bloqueo)
+      Al pasar: marcar `[~]` → `[x]` en integración (§5) +
+      criterios ES/EN (§8)
 
 ### FASE 2 — Fallback real (videos sin captions)
 - [ ] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
