@@ -1,0 +1,15 @@
+WEBVTT
+Kind: captions
+Language: es
+
+NOTE
+Esto es un comentario que debe ignorarse
+
+00:00:00.080 --> 00:00:02.580 align:start position:0%
+<hola> <c>rolling</c>
+
+00:00:00.080 --> 00:00:02.580 align:start position:0%
+hola rolling se expande
+
+00:00:02.580 --> 00:00:05.000 align:start position:0%
+hola rolling se expande y crece

@@ -21,6 +21,7 @@ from services.youtube_service import (
     TranscriptSegment,
     YouTubeService,
 )
+from services.youtube_subtitles import SubtitleResult
 
 VALID_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 VIDEO_ID = "dQw4w9WgXcQ"
@@ -177,7 +178,7 @@ class TestSeleccionPistas:
 
     def test_sin_pistas_lanza_no_captions(self) -> None:
         api = FakeApi(FakeTranscriptList())
-        svc = YouTubeService(api=api)  # type: ignore[arg-type]
+        svc = YouTubeService(api=api, enable_subtitle_fallback=False)  # type: ignore[arg-type]
         with pytest.raises(NoCaptionsAvailable) as exc_info:
             svc.get_transcript(VALID_URL)
         assert exc_info.value.code == "no_captions"
@@ -198,10 +199,99 @@ class TestErroresMapeados:
 
     def test_no_transcript_found_mapea_a_no_captions(self) -> None:
         api = FakeApi(NoTranscriptFound(VIDEO_ID, "es", ["es"]))
-        svc = YouTubeService(api=api)  # type: ignore[arg-type]
+        svc = YouTubeService(api=api, enable_subtitle_fallback=False)  # type: ignore[arg-type]
         with pytest.raises(NoCaptionsAvailable) as exc_info:
             svc.get_transcript(VALID_URL)
         assert exc_info.value.code == "no_captions"
+
+
+class _FakeSubtitles:
+    """Doble de YtDlpSubtitles para tests (sin red)."""
+
+    def __init__(self, outcome: SubtitleResult | Exception | None) -> None:
+        self._outcome = outcome
+        self.calls: list[str] = []
+
+    def fetch(self, video_id: str, languages: tuple[str, ...]) -> SubtitleResult:
+        self.calls.append(video_id)
+        if isinstance(self._outcome, Exception):
+            raise self._outcome
+        if self._outcome is None:
+            raise NoCaptionsAvailable("sin subtítulos")
+        return self._outcome
+
+
+class TestFallbackSubtitles:
+    """Fase 2: captions vacías → yt-dlp subtítulos → no_captions."""
+
+    def _service_without_captions(
+        self,
+        subtitle_result: SubtitleResult | Exception | None,
+        cache: TranscriptCache | None = None,
+    ) -> YouTubeService:
+        api = FakeApi(FakeTranscriptList())
+        subs = _FakeSubtitles(subtitle_result)
+        return YouTubeService(  # type: ignore[arg-type]
+            cache=cache, api=api, subtitles=subs,
+            enable_subtitle_fallback=True,
+        )
+
+    def test_fallback_devuelve_segmentos_y_cachea(
+        self, cache: TranscriptCache,
+    ) -> None:
+        sub = SubtitleResult(
+            language="es",
+            track_type="manual",
+            segments=[{"start": 0.0, "end": 2.0, "text": "hola yt-dlp"}],
+        )
+        svc = self._service_without_captions(sub, cache)
+        result = svc.get_transcript(VALID_URL, languages=["es", "en"])
+
+        assert result.source == "yt_dlp_subtitles"
+        assert result.language == "es"
+        assert result.track_type == "manual"
+        assert result.text == "hola yt-dlp"
+
+        entry = cache.get(VIDEO_ID, "es+en", "manual")
+        assert entry is not None
+        assert entry["source"] == "yt_dlp_subtitles"
+
+    def test_fallback_tambien_vacio_lanza_no_captions(self) -> None:
+        svc = self._service_without_captions(
+            NoCaptionsAvailable("yt-dlp sin subs"),
+        )
+        with pytest.raises(NoCaptionsAvailable) as exc_info:
+            svc.get_transcript(VALID_URL)
+        assert exc_info.value.code == "no_captions"
+
+    def test_fallback_deshabilitado_lanza_no_captions_directo(self) -> None:
+        api = FakeApi(FakeTranscriptList())
+        svc = YouTubeService(  # type: ignore[arg-type]
+            api=api, enable_subtitle_fallback=False,
+        )
+        with pytest.raises(NoCaptionsAvailable):
+            svc.get_transcript(VALID_URL)
+
+    def test_fallback_respeta_max_duration(self) -> None:
+        sub = SubtitleResult(
+            language="es",
+            track_type="auto",
+            segments=[{"start": 0.0, "end": 7300.0, "text": "largo"}],
+        )
+        svc = self._service_without_captions(sub)
+        svc.max_duration_seconds = 7200
+        with pytest.raises(DurationExceeded):
+            svc.get_transcript(VALID_URL)
+
+    def test_fallback_no_se_usa_si_hay_captions(self) -> None:
+        tr = FakeTranscript(DEFAULT_SNIPPETS, "es")
+        api = FakeApi(FakeTranscriptList(manual={"es": tr}))
+        subs = _FakeSubtitles(
+            AssertionError("no debe llamar a yt-dlp si hay captions"),
+        )
+        svc = YouTubeService(api=api, subtitles=subs)  # type: ignore[arg-type]
+        result = svc.get_transcript(VALID_URL)
+        assert result.source == "youtube_captions"
 
 
 class TestDuracion:
@@ -265,7 +355,8 @@ class TestRateLimiterIntegracion:
             return result
 
         rl.acquire = spy  # type: ignore[method-assign]
-        svc = YouTubeService(cache=cache, api=api, rate_limiter=rl)  # type: ignore[arg-type]
+        svc = YouTubeService(cache=cache, api=api, rate_limiter=rl,  # type: ignore[arg-type]
+                             enable_subtitle_fallback=False)
         svc.get_transcript(VALID_URL, languages=["es", "en"])
         assert len(calls) == 1  # cache miss → 1 acquire
 
@@ -280,7 +371,8 @@ class TestRateLimiterIntegracion:
             return result
 
         rl2.acquire = spy2  # type: ignore[method-assign]
-        svc2 = YouTubeService(cache=cache, api=api, rate_limiter=rl2)  # type: ignore[arg-type]
+        svc2 = YouTubeService(cache=cache, api=api, rate_limiter=rl2,  # type: ignore[arg-type]
+                              enable_subtitle_fallback=False)
         svc2.get_transcript(VALID_URL, languages=["es", "en"])
         assert len(calls2) == 0  # cache hit → 0 acquire
 

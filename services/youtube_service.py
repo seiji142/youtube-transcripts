@@ -1,8 +1,9 @@
-"""Orquestador de transcripciones de YouTube (Fase 1: solo captions).
+"""Orquestador de transcripciones de YouTube.
 
-Pipeline Fase 1: URL validada → caché → youtube-transcript-api.
+Pipeline: URL validada → caché → youtube-transcript-api (captions)
+→ yt-dlp (subtítulos, Fase 2) → NoCaptionsAvailable (ASR: Fase 2+).
 Selección de pistas: manual > automática, idioma pedido > original.
-Límite de duración 2h. Sin ASR (eso es Fase 2).
+Límite de duración 2h.
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from services.youtube_errors import (
     VideoBlockedOrUnavailable,
 )
 from services.youtube_rate_limit import RateLimiter
+from services.youtube_subtitles import SubtitleResult, YtDlpSubtitles
 from services.youtube_urls import extract_video_id
 
 MAX_DURATION_SECONDS = 7200  # 2 horas
@@ -161,6 +163,8 @@ class YouTubeService:
         max_duration_seconds: int = MAX_DURATION_SECONDS,
         api: YouTubeTranscriptApi | None = None,
         rate_limiter: RateLimiter | None = None,
+        subtitles: YtDlpSubtitles | None = None,
+        enable_subtitle_fallback: bool = True,
     ) -> None:
         self.cache = cache
         self.languages = languages
@@ -169,6 +173,10 @@ class YouTubeService:
         # Rate limiter preventivo (1s / 10-min); None o enabled=False
         # para tests unitarios con mock.
         self.rate_limiter = rate_limiter if rate_limiter is not None else RateLimiter()
+        # Fallback yt-dlp (Fase 2): inyectable para tests; se desactiva
+        # con enable_subtitle_fallback=False para no depender de red.
+        self._subtitles = subtitles if subtitles is not None else YtDlpSubtitles()
+        self._enable_subtitle_fallback = enable_subtitle_fallback
 
     def get_transcript(
         self,
@@ -201,10 +209,15 @@ class YouTubeService:
                 transcript_list, langs,
             )
             fetched = transcript.fetch()
+        except NoCaptionsAvailable:
+            return self._fallback_to_subtitles(video_id, langs, lang_key)
         except TranscriptError:
             raise
         except Exception as exc:  # noqa: BLE001 — mapeamos al dominio
-            raise _map_library_error(exc, video_id) from exc
+            mapped = _map_library_error(exc, video_id)
+            if isinstance(mapped, NoCaptionsAvailable):
+                return self._fallback_to_subtitles(video_id, langs, lang_key)
+            raise mapped from exc
 
         segments = [
             TranscriptSegment(
@@ -237,6 +250,64 @@ class YouTubeService:
                 segments=[asdict(s) for s in segments],
                 language_code=language_code,
                 source="youtube_captions",
+            )
+
+        return result
+
+    def _fallback_to_subtitles(
+        self,
+        video_id: str,
+        langs: tuple[str, ...],
+        lang_key: str,
+    ) -> TranscriptResult:
+        """Intenta yt-dlp cuando no hay captions; si tampoco, lanza no_captions."""
+        if not self._enable_subtitle_fallback:
+            raise NoCaptionsAvailable(
+                "No hay captions disponibles en este video",
+                video_id=video_id,
+                suggestion="Sin captions: ASR local disponible en Fase 2",
+            )
+
+        # Segunda ruta de red (otro proveedor); el RateLimiter ya
+        # absorbió la espera mínima en el intento de captions.
+        try:
+            subtitle_result = self._subtitles.fetch(video_id, langs)
+        except TranscriptError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — mapeamos al dominio
+            raise _map_library_error(exc, video_id) from exc
+
+        segments = [
+            TranscriptSegment(
+                start=float(seg["start"]),
+                end=float(seg["end"]),
+                text=str(seg["text"]).strip(),
+            )
+            for seg in subtitle_result.segments
+        ]
+
+        result = TranscriptResult(
+            video_id=video_id,
+            language=subtitle_result.language,
+            source=subtitle_result.source,
+            track_type=subtitle_result.track_type,
+            segments=segments,
+        )
+
+        if result.duration_seconds > self.max_duration_seconds:
+            raise DurationExceeded(
+                f"El video dura {result.duration_seconds:.0f}s "
+                f"(máximo {self.max_duration_seconds}s)",
+                video_id=video_id,
+                suggestion="Los videos mayores a 2h no están soportados en v1",
+            )
+
+        if self.cache is not None:
+            self.cache.set(
+                video_id, lang_key, result.track_type,
+                segments=[asdict(s) for s in segments],
+                language_code=result.language,
+                source=result.source,
             )
 
         return result
