@@ -45,6 +45,30 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-23 — `POST /ingest` falló: body no parseable (encoding PowerShell 5.1)
+
+**Tipo:** A (WebException — exit del comando)
+**Comando:** `Invoke-RestMethod -Uri "http://127.0.0.1:8000/ingest" -ContentType "application/json"` (episodio de cierre gitflow)
+**Error/Warning:** `{"detail":"There was an error parsing the body"}`
+**Causa raíz:** el body contenía caracteres no-ASCII (ej. `"PRÓXIMA"`) y PowerShell 5.1 serializó el string sin charset UTF-8 explícito (`ContentType: application/json` sin `charset=` → encoding ANSI/cp1252) → bytes inválidos para UTF-8 → el servidor no parseó el JSON. Evidencia: el **primer** `/ingest` del día (cuerpo100% ASCII) funcionó con el mismo código.
+**Fix:** re-envío con Python stdlib `urllib` + `json.dumps` (`ensure_ascii=True` → body ASCII puro con escapes `\uXXXX`), script en temp.
+**Verificación:** `200 {"ok":true,"episode_id":"ep_320450540d3e484a899566084fbf34ca"}`.
+**Lección:** con `Invoke-RestMethod` en PS5.1, si el body trae tildes/ñ: poner `charset=utf-8` explícito o serializar desde Python. Preferido: helper Python para `/ingest` (sin sorpresas de encoding).
+
+---
+
+## 2026-09-23 — `gh api` falló por falta de autenticación
+
+**Tipo:** A (error duro — exit≠0)
+**Comando:** `gh api repos/seiji142/youtube-transcripts/branches/main/protection` (y `gh api repos/seiji142/youtube-transcripts --jq ...`; re-intento `gh auth status`)
+**Error/Warning:** `To get started with GitHub CLI, please run:  gh auth login` / `Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.` / `You are not logged into any GitHub hosts. To log in, run: gh auth login` (EXIT=1)
+**Causa raíz:** `gh` instalado pero **sin autenticar** (sin `GH_TOKEN` ni sesión de `gh auth login`). El SSH del remote autentica git push/pull, **no** la API REST — son capas distintas.
+**Fix:** lectura de estado vía API **anónima** `Invoke-RestMethod https://api.github.com/repos/seiji142/youtube-transcripts/branches/main` (repo público) → `protected=True`. Autenticación PAT documentada como **Fase 5** en `docs/gitflow-scaffold.md` (+ template `templates/gitflow-scaffold/TEMPLATE_GITFLOW_GH_PAGES.md`); pendiente de realizar.
+**Verificación:** `branch=main protected=True`, `enabled=true`, `default_branch=main`, `private=false`.
+**Lección:** SSH ≠ token de API. Para leer estado de un repo **público** basta `api.github.com` anónimo; para PRs/detalle completo de protección hace falta `gh auth` (Fase 5). No confiar en `gh` instalado = `gh` usable.
+
+---
+
 ## 2026-09-23 — Tools MCP brain-ai ausentes del esquema de la sesión
 
 **Tipo:** C (output inesperado — obligó a diagnosticar y cambiar de plan)

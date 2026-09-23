@@ -307,6 +307,22 @@ de cuenta en nuestro flujo.
       habla" ya no se consigue por búsqueda; se documenta como
       limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
+### PRÓXIMA SESIÓN (23/09/2026) — Arrancar FASE 3
+- [ ] Fase 3 (ver §5): chunking500-1000 tokens / overlap10-15% → índice
+      FTS5 `transcript_chunks_fts` → tool `youtube_transcript_search`
+      con citas `https://www.youtube.com/watch?v=ID&t=620s`. Todo sobre
+      `develop`; decisiones nuevas → `docs/DECISIONES.md` (sección
+      Fase 3 abierta); errores de shell → `docs/LECCIONES.md` §10.
+- Notas de entorno al arrancar:
+  - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
+    (sin approvals). `master` legacy congelada en `830914e`.
+  - **Bridge MCP `brain-ai` desconectado** en la última sesión (HTTP
+    `/health` → 200 OK, solo falta el bridge): reiniciar opencode para
+    recuperar las tools de memoria/tests; mientras tanto, fallback
+    `POST /ingest` (`brain-ai-01/clients/memoria.py`) y pytest por bash.
+  - **`gh` sin autenticar:** PRs `develop → main` manuales en la UI, o
+    seguir **Fase 5** de `docs/gitflow-scaffold.md` (PAT fine-grained).
+
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
 - [ ] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
       con timestamps

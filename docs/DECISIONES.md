@@ -21,6 +21,8 @@ Orden cronológico inverso (más reciente arriba).
 | **Q3: bash para checkout/creación de ramas** | Las tools MCP `git_*` no tienen creación/checkout de ramas; el propio template prescribe `git checkout -b` con bash. Codificado como excepción en `rules.md` (§9) y `system.md` (tabla Git) | Setup de `develop` ejecutado con bash autorizado (23/09) |
 | **`opencode.json` del template no se copia** | El del proyecto ya es el template con placeholders resuelto (+ provider groq + server `youtube-transcripts`) | Comparación línea por línea 23/09 |
 | **Lección: `git_subir_cambios(rama=X)` no crea la rama** | La tool hace add+commit en la rama **actual** y `rama` solo apunta el push; con rama inexistente: commit local + push fallido | LECCIONES.md "git_subir_cambios(rama=...)" (fix: re-intento sin `rama`) |
+| **Protección de `main` aplicada y verificada (23/09)** | Regla "Require a pull request before merging" SIN "Require approvals" creada manualmente en la UI de GitHub (Fase 3 del checklist); obliga PR `develop → main` | API de GitHub: `GET /repos/seiji142/youtube-transcripts/branches/main` → `protected=true`, `enabled=true`; repo público, `default_branch=main`. Detalle require-PR: según reporte de UI (payload anónimo no lo muestra; `gh` sin auth — Fase 5) |
+| **PAT para `gh` documentado como Fase 5 del template** | SSH resuelve git (ya funciona); crear/mergear PRs vía CLI exige token de API. Pasos A/B/C (fine-grained: Contents+PRs RW,90d, repo mínimo) + reglas de seguridad, generalizados con `<USUARIO>/<REPO>` | `templates/gitflow-scaffold/TEMPLATE_GITFLOW_GH_PAGES.md` § Fase 5 + checklist §7; copia en `docs/gitflow-scaffold.md` (estado: sin autenticar) |
 
 ---
 

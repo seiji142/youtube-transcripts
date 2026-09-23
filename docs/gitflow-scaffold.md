@@ -71,6 +71,58 @@ git branch -a   # debe mostrar main, develop, origin/develop, origin/main
 git status      # working tree limpio
 ```
 
+### Fase 5 — Autenticar `gh` con token (opcional, para PRs vía CLI)
+
+> **Estado en este proyecto (23/09/2026): `gh` SIN autenticar.** PRs
+> `develop → main` manuales en la UI, o seguir estos pasos.
+
+Con `main` protegido (PR obligatorio), la CLI permite crear/mergear PRs sin
+abrir la UI. SSH y el token de API son **capas distintas**: SSH autentica
+git push/pull; el token autentica la API REST de GitHub (PRs, settings,
+lectura de protección). SSH **no** sustituye al token.
+
+#### A. Crear el token (en GitHub, manual)
+
+1. GitHub → avatar → **Settings** → **Developer settings** (izquierda, abajo)
+   → **Personal access tokens**.
+2. **Recomendado: Fine-grained token** (*Generate new token → Fine-grained*):
+   - **Repository access:** solo `seiji142/youtube-transcripts` (mínimo privilegio).
+   - **Permissions → Repository permissions:**
+     - *Contents:* **Read and write** (para mergear)
+     - *Pull requests:* **Read and write** (crear/mergear PRs)
+   - **Expiration:** 90 días (o la que prefieras).
+3. *(Alternativa clásica: token classic con scope `repo` — da más permisos de los necesarios.)*
+4. Copiar el token apenas lo genera (solo se muestra una vez).
+
+#### B. Autenticar `gh` (terminal)
+
+```powershell
+# Opción 1 — pegarlo en gh (no queda en el historial de comandos):
+gh auth login
+#   Where do you use GitHub?          → GitHub.com
+#   Preferred protocol for Git ops    → SSH (o HTTPS si no usás claves SSH)
+#   Authenticate Git with GH creds?   → Yes
+#   How to authenticate?              → Paste an authentication token
+#   (pegás el token + Enter)
+
+# Opción 2 — variable de entorno GH_TOKEN (persiste en nuevas terminales):
+[Environment]::SetEnvironmentVariable("GH_TOKEN", "<PEGAR_TOKEN_AQUÍ>", "User")
+```
+
+#### C. Verificar
+
+```powershell
+gh auth status
+gh api repos/seiji142/youtube-transcripts/branches/main/protection
+# → ahora sí muestra el detalle completo (required_pull_request_reviews, etc.)
+```
+
+#### Reglas de seguridad (obligatorias)
+
+- El token **nunca** en el chat, en commits, ni en archivos del repo.
+- SSH queda para git; el token solo para la API — se complementan, no compiten.
+- Revocación: GitHub → Settings → Developer settings → el token → *Delete*.
+
 ## 3. Deploy a GitHub Pages
 
 ### 3.1 Requisitos de codigo
@@ -262,8 +314,10 @@ git merge feature/<desc>
 ```
 
 ## 7. Checklist de verificacion
-- [ ] `develop` creada y subida con tracking (`origin/develop`).
-- [ ] `main` con branch protection (require PR, SIN require approvals).
+- [x] `develop` creada y subida con tracking (`origin/develop`).
+- [x] `main` con branch protection (require PR, SIN require approvals).
+- [ ] `gh` autenticado (GH_TOKEN / `gh auth login`) para PRs `develop → main`
+      vía CLI — opcional: PRs manuales en la UI (ver Fase 5).
 - [ ] `on: push branches: [main]` en el workflow Pages.
 - [ ] Base relativa (`base: "./"`) y rutas relativas en data/assets.
 - [ ] `npm run build` exitoso y sin rutas absolutas (`/img`, `/cv-`) en el dist.
