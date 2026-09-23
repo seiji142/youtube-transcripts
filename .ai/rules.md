@@ -107,3 +107,35 @@ ANTES de concluir que un servicio está caído:
 - ANTES de responder sobre decisiones/configuración/credenciales: `brain_ai_memory_search`.
 - DESPUÉS de una decisión importante: `brain_ai_memory_save`.
 - Para Git: usa exclusivamente las herramientas MCP `git_*` (ver `system.md`).
+
+## 10. REGISTRO DE ERRORES DE SHELL (obligatorio)
+
+### 10.1 Cuándo registrar
+Ante CUALQUIERA de estos casos, DEBES registrar el error Y su corrección:
+
+- **A — Error duro:** comando con exit ≠ 0, test fallido, exception/traceback,
+  `re.error`, push fallido, import roto, etc.
+- **B — Warning relevante:** deprecation, CRLF/encoding de git, binario no
+  encontrado en PATH (winget/ffmpeg), advertencias de instalación.
+- **C — Output inesperado:** cualquier cosa que te obligue a detenerte,
+  diagnosticar con evidencia y **cambiar de plan**.
+
+### 10.2 Dónde registrar
+En `docs/LECCIONES.md`, usando el template de la sección "Template de entrada".
+Una entrada por incidente. Orden cronológico inverso (más reciente arriba).
+
+### 10.3 Qué registrar (campos obligatorios)
+1. **Fecha**
+2. **Comando exacto** que falló o sorprendió
+3. **Error/warning tal cual** (stderr o fragmento relevante, sin parafrasear)
+4. **Causa raíz** (con evidencia verificada, NO suposición)
+5. **Fix aplicado**
+6. **Verificación** (re-comando o suite en verde)
+
+### 10.4 Memoria persistente
+DESPUÉS de aplicar el fix y verificar: `brain_ai_memory_save`
+con `project="youtube-transcripts"`, decisión + evidencia + tags
+(`error`, `fix`, y tipo: shell/test/warning).
+
+### 10.5 Excepción
+Ninguna. Un error de shell no registrado = deuda de evidencia.

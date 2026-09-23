@@ -1,12 +1,29 @@
 # Lecciones aprendidas
 
 Registro de errores reales y su resolución, para no repetirlos.
+Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
+
+## Template de entrada
+
+```markdown
+## YYYY-MM-DD — Título corto del incidente
+
+**Tipo:** A (error duro) | B (warning) | C (cambio de plan)
+**Comando:** `comando exacto que falló`
+**Error/Warning:** (tal cual, sin parafrasear)
+**Causa raíz:** (con evidencia, no suposición)
+**Fix:** (qué se cambió)
+**Verificación:** (re-comando o suite en verde)
+**Lección:** (regla derivada, si aplica)
+```
 
 ---
 
 ## 2026-09-23 — Regex monolítica rompió la collection de tests
 
+**Tipo:** A (error duro — collection de pytest falló)
 **Archivo:** `services/youtube_subtitles.py`
+**Comando:** `.venv\Scripts\python -m pytest tests/ -m "not integration" -q`
 **Error:** `re.error: missing ), unterminated subpattern at position 52`
 
 ### Qué pasó
