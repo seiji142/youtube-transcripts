@@ -45,6 +45,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-23 — `git_subir_cambios(rama=...)` no crea la rama: push fallido
+
+**Tipo:** A (push fallido, exit≠0)
+**Comando:** `git_subir_cambios(mensaje="Add Fase 2 ASR: ...", rama="feat/fase2-asr-jobs-worker")`
+**Error/Warning:** `error: src refspec feat/fase2-asr-jobs-worker does not match any` / `error: failed to push some refs to 'git@github.com:seiji142/youtube-transcripts.git'`
+**Causa raíz:** La tool MCP ejecuta `git add . && git commit && git push origin <rama>` **sin checkout/creación de rama**. El parámetro `rama` solo apunta el refspec de push; como la rama no existía localmente, el push falló. **add+commit SÍ corrieron** sobre la rama actual (`master`) → commit `ab149ac` local, árbol limpio, `master` ahead de `origin/master` por 1 (evidencia: `git_ver_historial` + `git_ver_estado`).
+**Fix:** (1) Push directo a `master` para completar la subida (el commit ya estaba en master local; moverlo a otra rama exigía `git reset`/`checkout`, sin tool MCP que lo haga). (2) Queda explícito: con esta tool **el commit siempre cae en la rama actual**; para respetar §2.3 (nunca commitear directo a master) hay que crear/checkear la rama ANTES de invocarla (bash/otro flujo), cosa que esta sesión no hizo.
+**Verificación:** tras re-intento sin `rama`: `git_ver_estado` → "up to date with origin/master", historial incluye `ab149ac` + esta lección.
+**Lección:** `rama` en `git_subir_cambios` ≠ crear rama. Si el plan exige rama feature: `checkout -b` primero (y verificarlo), luego subir con `rama=""`. Ante push fallido, revisar SIEMPRE `git_ver_historial`/`estado` para saber si el commit local ya se hizo (no repetir add/commit a ciegas).
+
+---
+
 ## 2026-09-23 — Runner async sin salida: `'NoneType' object is not subscriptable`
 
 **Tipo:** A (comando terminó con status=error, stdout=null, returncode=null)
