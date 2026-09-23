@@ -1,5 +1,5 @@
 # Tareas - Análisis de Videos YouTube (servidor MCP propio)
-Ultima actualizacion: 21/09/2026
+Ultima actualizacion: 22/09/2026
 
 ---
 
@@ -116,6 +116,8 @@ manual/auto, motor y fecha.
   bloqueo **persiste** (1 video, RateLimiter activo, 1.6s, aún 429).
   Reset estimado en rango de horas. Dejar como tarea de próxima
   sesión; no insistir para no extender el bloqueo.
+- **Update 22/09:** bloqueo **levantado**; Nivel 1 OK → suite
+  integración **8/8 en verde**. Cierre de la TAREA PENDIENTE (§5).
 
 #### Escenarios de bloqueo — no hay "cuenta" que banear
 
@@ -196,17 +198,14 @@ de cuenta en nuestro flujo.
       live, hosts), caché (hit/miss/TTL), errores, selección de pistas
       con mock — cobertura ≥80% — **83/83 en verde** (incluye
       RateLimiter y MCP server)
-- [~] Tests integración con red: 3 videos ES + 3 EN con captions →
+- [x] Tests integración con red: 3 videos ES + 3 EN con captions →
       texto + timestamps; video sin captions → `no_captions`
       — `tests/test_integration.py` creado (8 tests, marcador
-      `integration`), videos fijados y verificados; **pendiente
-      ejecución limpia**: YouTube rate-limitó la IP (HTTP 429) tras
-      el sondeo de candidatos; tests skipan ante `blocked` tras 3
-      reintentos con backoff (riesgo §4).
-      — **Reintento 21/09/2026 21:55**: Nivel 1 (1 video) tras
-      ~55-58 min del primer 429 → **sigue bloqueado**; se paró ahí
-      (criterio de corte, no martillear). TAREA PARA PRÓXIMA SESIÓN:
-      reintentar Nivel 1 → si OK, correr suite completa.
+      `integration`), videos fijados y verificados; **8/8 en verde
+      22/09/2026** tras levantarse el bloqueo 429 (Nivel 1 sonda
+      OK → suite completa OK, 34s). Historial: rate limit del
+      21/09 tras sondeo de candidatos; reintento 21:55 del mismo
+      día aún bloqueado; corte por criterio de no insistir.
 - [x] `services/youtube_rate_limit.py` — RateLimiter preventivo
       (propuesto tras incidente 429, ver §4): **1s mínimo entre
       requests** + **máx 10 req / 60s**; integrado en
@@ -223,14 +222,15 @@ de cuenta en nuestro flujo.
       (**83/83**); brain-ai-01 no modificado; git limpio.
       Integración con red queda como **tarea aparte** (ver checkbox
       `[~]` de tests integración)
+      — **Re-verificación 21/09/2026 22:18**: suite offline
+      re-ejecutada → **83/83 en verde** (8 integración deselected),
+      sin regresiones; reintegración con red sigue pendiente (§5
+      TAREA PENDIENTE)
 
 ### TAREA PENDIENTE — Próxima sesión
-- [ ] Reintentar integración: `pytest tests/test_integration.py -m integration`
-      1. **Nivel 1:** sondeo de 1 video (verificar si levantó el 429)
-      2. Si **OK** → correr suite completa
-      3. Si **falla** → parar, no insistir (evitar extender bloqueo)
-      Al pasar: marcar `[~]` → `[x]` en integración (§5) +
-      criterios ES/EN (§8)
+- [x] ~~Reintentar integración~~ **COMPLETADA 22/09/2026**: Nivel 1
+      (1 video) OK → suite completa **8/8 en verde**; criterios ES/EN
+      (§8) marcados `[x]`
 
 ### FASE 2 — Fallback real (videos sin captions)
 - [ ] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
@@ -303,10 +303,10 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
 
 ## 8. Criterios de aceptación v1 (Fases 1-4)
 
-- [~] Video ES con captions → transcripción en <10s vía servidor MCP propio
-      — verificado offline con mocks; pendiente suite integración
-- [~] Video EN con captions → transcripción con idioma detectado
-      — verificado offline con mocks; pendiente suite integración
+- [x] Video ES con captions → transcripción en <10s vía servidor MCP propio
+      — suite integración 8/8 verde (22/09/2026), verificado con red real
+- [x] Video EN con captions → transcripción con idioma detectado
+      — suite integración 8/8 verde (22/09/2026), verificado con red real
 - [ ] Video sin captions → job async → transcripción local correcta
       — **Fase 2** (no aplica aún)
 - [ ] Video largo → `search` devuelve chunks citados con `&t=`
