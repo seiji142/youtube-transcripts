@@ -19,6 +19,32 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-23 — Comando `file` no existe en PowerShell (Windows)
+
+**Tipo:** A (error duro — exit del comando)
+**Comando:** `file .ai/rules.md docs/LECCIONES.md`
+**Error:** `file : El término 'file' no se reconoce como nombre de un cmdlet... CommandNotFoundException`
+**Causa raíz:** `file` es una utilidad de Unix/macOS; no está en PATH de Windows PowerShell 5.1. Verificado con `Get-Command file` → no encontrado.
+**Fix:** Usar alternativas nativas de Windows/Python:
+- `git ls-files --eol <archivo>` → muestra EOL del index y worktree
+- `python -c "p=open(f,'rb').read(); p.count(b'\\r\\n')"` → cuenta CRLF/LF
+**Verificación:** `git ls-files --eol .ai/rules.md` → `i/lf w/crlf` (confirmado).
+**Lección:** En win32, no asumir utilidades Unix (`file`, `grep`, `cat`). Usar cmdlets de PowerShell o binarios del proyecto (git, python).
+
+---
+
+## 2026-09-23 — Warning CRLF de git al hacer `git add`
+
+**Tipo:** B (warning relevante)
+**Comando:** `git add .ai/rules.md docs/LECCIONES.md`
+**Error/Warning:** `warning: LF will be replaced by CRLF in .ai/rules.md.` (y lo mismo para `docs/LECCIONES.md`)
+**Causa raíz:** `core.autocrlf=true` en este repo (Windows). Git guarda LF en el index (`i/lf`) y convierte a CRLF en el worktree (`w/crlf`). Los archivos se escriben con CRLF en disco; al add, git normaliza a LF para el repo. **No es un error de contenido**, es conversión de fin de línea esperada en Windows.
+**Fix:** No hizo falta fix de código — es comportamiento deseado de `autocrlf=true`. Se verificó con `git ls-files --eol` que index=LF y worktree=CRLF.
+**Verificación:** `git ls-files --eol .ai/rules.md docs/LECCIONES.md` → ambos `i/lf w/crlf`; tests 108/108 en verde tras el commit.
+**Lección:** Los warnings `LF will be replaced by CRLF` con `autocrlf=true` son **informativos**, no rompen nada. No "arreglar" convirtiendo archivos a LF a mano (rompería el worktree Windows). Solo investigar si el diff muestra cambios de EOL no deseados en archivos que no tocaste.
+
+---
+
 ## 2026-09-23 — Regex monolítica rompió la collection de tests
 
 **Tipo:** A (error duro — collection de pytest falló)
