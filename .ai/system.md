@@ -127,3 +127,7 @@ Usa las herramientas MCP de git en vez de bash para operaciones git:
 | `git_ver_diferencias` | Ver cambios pendientes |
 | `git_ver_historial` | Ver últimos commits |
 | `git_subir_cambios` | Subir cambios a git (add + commit + push) |
+
+Excepción gitflow: checkout/creación de ramas (no disponibles en MCP) y
+fallback cuando `git_subir_cambios` falla → bash, según `rules.md` §9.
+Rama de trabajo diario: `develop` (ver `context.md` "Ramas del Proyecto").

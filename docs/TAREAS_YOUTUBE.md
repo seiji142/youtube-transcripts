@@ -1,6 +1,9 @@
 # Tareas - Análisis de Videos YouTube (servidor MCP propio)
 Ultima actualizacion: 23/09/2026
 
+> Historial de decisiones por fase (Fases 1-2, gitflow, 3-4 abiertas):
+> **`docs/DECISIONES.md`**. Errores de shell: `docs/LECCIONES.md`.
+
 ---
 
 ## 1. Objetivo

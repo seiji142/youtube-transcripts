@@ -45,6 +45,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-23 — Tools MCP brain-ai ausentes del esquema de la sesión
+
+**Tipo:** C (output inesperado — obligó a diagnosticar y cambiar de plan)
+**Comando:** llamadas a `brain-ai_memory_save` y `brain-ai_run_tests`
+**Error/Warning:** `Model tried to call unavailable tool 'brain-ai_memory_save'. Available tools: ... (sin brain-ai)`
+**Causa raíz:** el servidor HTTP de brain-ai **está vivo** (`GET /http://localhost:8000/health` → `200 {"ok":true}`); lo que no está conectado es el **puente MCP** (`mcp_bridge.py`) en la sesión opencode actual — sus tools no aparecen en el esquema. No es caída del servicio.
+**Fix:** (1) tests → bash `.venv\Scripts\python -m pytest ...` directo (186/186, exit0); (2) memoria → API REST `POST /ingest` con el payload del cliente canónico `brain-ai-01/clients/memoria.py` (`guardar()`); (3) reconexión del bridge → reiniciar opencode (fuera del alcance de la sesión).
+**Verificación:** `PYTEST_EXIT=0`; `POST /ingest` respondió OK (episodio gitflow guardado).
+**Lección:** "tool MCP ausente del esquema" ≠ "servicio caído": verificar `/health` antes de diagnosticar. El cliente canónico documenta la API REST (`/ingest`, `/retrieve`, `/consolidate`) como fallback cuando el bridge MCP no está disponible.
+
+---
+
 ## 2026-09-23 — `git_subir_cambios(rama=...)` no crea la rama: push fallido
 
 **Tipo:** A (push fallido, exit≠0)
