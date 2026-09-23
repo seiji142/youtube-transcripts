@@ -19,6 +19,92 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-23 — Smoke ASR: Python 3.10 deprecado para huggingface_hub
+
+**Tipo:** B (warning relevante — deprecation)
+**Comando:** `.venv\Scripts\python C:\...\smoke_asr.py`
+**Error/Warning:** `Deprecated Feature: Support for Python version 3.10 has been deprecated. Please update to Python 3.11 or above`
+**Causa raíz:** `huggingface_hub` (dependencia de `faster-whisper`) marca EOL de soporte para Python 3.10; el venv del proyecto usa 3.10.7 (fijado en TAREAS §7). Verificado en la primera descarga de modelo del smoke 23/09.
+**Fix:** Ninguno aún — es warning, no error (smoke PASS). Trackear: migrar el proyecto a Python ≥3.11 cuando salga de v1 o cuando un upgrade de dependencia lo exija.
+**Verificación:** smoke completo en verde pese al warning; suite 123/123.
+**Lección:** Las próximas versiones de `huggingface_hub` pueden dejar de soportar 3.10 del todo; al actualizar `faster-whisper` verificar primero compatibilidad con la versión de Python del venv.
+
+---
+
+## 2026-09-23 — Warnings de HuggingFace Hub en Windows (symlinks + sin token)
+
+**Tipo:** B (warning relevante — primera descarga de modelo)
+**Comando:** `.venv\Scripts\python C:\...\smoke_asr.py`
+**Error/Warning:**
+1. `UserWarning: huggingface_hub cache-system uses symlinks by default ... your machine does not support them in C:\Users\seiji\.cache\...` (x2, modelos)
+2. `Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.`
+**Causa raíz:** (1) Windows sin Developer Mode ni admin no puede crear symlinks → HF usa copia plana (más disco, funciona igual). (2) Descarga anónima: rate limit más bajo, sin HF_TOKEN (correcto: no queremos secrets en el proyecto — solo aplica si algún día la descarga se torna lenta/bloqueada, usar env var del SO, nunca commitear).
+**Fix:** Ninguno requerido — degradación solo de performance/espacio, no de funcionalidad. Podría desactivarse el warning con `HF_HUB_DISABLE_SYMLINKS_WARNING=1` si molesta en logs.
+**Verificación:** descarga del modelo `tiny` completada, smoke PASS, temporal limpio.
+**Lección:** En Windows sin Developer Mode, esperar cache HF plana en `~/.cache/huggingface`; no confundir con error. Para rate limits de HF en CI/uso intensivo, usar `HF_TOKEN` vía entorno, nunca hardcodear.
+
+---
+
+## 2026-09-23 — Runner async sin salida: `'NoneType' object is not subscriptable`
+
+**Tipo:** A (comando terminó con status=error, stdout=null, returncode=null)
+**Comando:** `.venv\Scripts\python C:\...\verify_d2_v3.py` (vía `run_command` async)
+**Error/Warning:** `'NoneType' object is not subscriptable` (stderr, sin traceback completo, stdout vacío)
+**Causa raíz:** **No determinada** con la evidencia disponible: la re-ejecución **síncrona idéntica** del mismo script corrió completo (imprimió `[1/2]...` y terminó con el FAIL esperado del script, exit1). No se reprodujo. Sospecha sin confirmar: fallo de captura del wrapper async, no del script.
+**Fix:** Re-ejecutar comandos de verificación largos de forma síncrona (bash directo) cuando el runner async devuelva salida vacía.
+**Verificación:** misma v3 síncrona → output completo y consistente.
+**Lección:** stdout=null + returncode=null + error críptico = no confiar en el diagnóstico del runner async; re-ejecutar sincrónico antes de diagnosticar el script.
+
+---
+
+## 2026-09-23 — Timeout120s por procesar resultados de búsqueda sin `extract_flat`
+
+**Tipo:** A (shell tool terminó el comando por timeout)
+**Comando:** probe de `results?search_query=...` con `YoutubeDL` **sin** `extract_flat`
+**Error/Warning:** `shell tool terminated command after exceeding timeout120000 ms`
+**Causa raíz:** `extract_info(url)` sobre la página de resultados (~487 entradas) con el default `extract_flat=False` intentó **extraer cada video por completo** (una request por entrada). Evidencia: la misma URL con `extract_flat='in_playlist'` respondió en segundos.
+**Fix:** Siempre `extract_flat='in_playlist'` para páginas/playlist de búsqueda; extraer completo solo los pocos IDs elegidos (con gap ≥1.3s).
+**Verificación:** re-run con flat →3 candidatos en <5s.
+**Lección:** En yt-dlp, hojas de búsqueda/listas grandes = flat primero, nunca procesamiento completo en cascada.
+
+---
+
+## 2026-09-23 — `ytsearchdate10:` ya no existe en yt-dlp2026.8.19
+
+**Tipo:** A (error duro — exit≠0)
+**Comando:** `ydl.extract_info('ytsearchdate10:vlog español', download=False)`
+**Error/Warning:** `yt_dlp.networking.exceptions.NoSupportingHandlers: Unable to handle request: Unsupported url scheme: "ytsearchdate10" (requests, urllib)`
+**Causa raíz:** En `yt-dlp==2026.8.19` los extractores YouTube de búsqueda disponibles son solo `youtube:search` (`ytsearchN:`) y `youtube:search_url` (URL `results?...`). **No existe** `youtube:search:date` (verificado enumerando `gen_extractor_classes()`), por lo que el prefijo `ytsearchdateN:` cae al extractor `generic` y falla por scheme.
+**Fix:** Usar `ytsearchN:query` (relevancia) o una URL `https://www.youtube.com/results?search_query=...&sp=<filtro>` vía `youtube:search_url`.
+**Verificación:** `ytsearch2:vlog espanol` →2 entradas OK; URL `results` →487 OK.
+**Lección:** No asumir sintaxis históricas de yt-dlp entre versiones grandes; verificar IE_NAMEs disponibles antes de construir queries de búsqueda.
+
+---
+
+## 2026-09-23 — Verificación D2 exit1: job `asr_failed` "no produjo segmentos"
+
+**Tipo:** A (verificación con exit≠0)
+**Comando:** `.venv\Scripts\python C:\...\verify_d2_asr.py` (video `ScMzIvxBSi4`)
+**Error/Warning:** `status=failed ... error=asr_failed`; job en DB: `El ASR no produjo segmentos (audio vacío o sin habla)`
+**Causa raíz:** El video de prueba **no tiene habla** — evidencia del diagnóstico posterior: título real `'Placeholder Video'` (94s), `volumedetect mean=-15.9dB` (audio audible), `vad_filter=True →0 segmentos`, `vad_filter=False →14 segmentos` todos `" ."` (ruido), `language_probability≈0.36`. **No es bug del pipeline**: modelo `small` cargó (483MB), audio descargó (18MB wav), inferencia corrió y clasificó correctamente "sin habla" como error terminal.
+**Fix:** (1) Candidato nuevo vía búsqueda de videos frescos sin captions — **agotado**:18/18 videos de "last hour" ya traen auto-captions (YouTube las genera en <1h). (2) Fallback controlado: job manual `1m7fTsJzoao` (audio español real) → **worker completed, `Detected language 'es' probability1.00`, texto coherente, sin temporales**. El trigger "sin captions → processing" ya estaba probado con `ScMzIvxBSi4` en corrida real.
+**Verificación:** `verify_d2_v4.py` → `VERIFY PASS (fase-B)`, EXIT=0.
+**Lección:** Un "video sin captions" de tests no garantiza habla; verificar siempre habla/volumen antes de usarlo para validar ASR. La rapidez de auto-captions de YouTube (2026) hace casi inviable hallar "sin captions + habla" por búsqueda — el trigger y el pipeline se validan por separado.
+
+---
+
+## 2026-09-23 — Ternario `? :` no existe en PowerShell 5.1
+
+**Tipo:** A (error duro — parse error del shell)
+**Comando:** `comando de verificación de entorno con (Get-Command winget ...) ? "OK" : "NOT FOUND"`
+**Error:** `Token '?' inesperado en la expresión o la instrucción... ParserError`
+**Causa raíz:** El operador ternario condicional (`? :`) es sintaxis de PowerShell 7+. El shell del entorno es Windows PowerShell 5.1 (`$PSVersionTable` → 5.1); falla en *parse*, antes de ejecutar cualquier comando.
+**Fix:** Usar `if / else` clásico o el operador binario `$(...) -and` / `-ne $null` para ramificar.
+**Verificación:** comando re-escrito con `if ($wg) { ... } else { ... }` ejecutado sin errores (ffmpeg/winget/choco detectados correctamente).
+**Lección:** En este entorno asumir PowerShell 5.1: prohibido ternario `? :`, `??`, `&&`/`||` de pipeline. Encadenar con `;` y `if ($?)` o `if/else`.
+
+---
+
 ## 2026-09-23 — Comando `file` no existe en PowerShell (Windows)
 
 **Tipo:** A (error duro — exit del comando)

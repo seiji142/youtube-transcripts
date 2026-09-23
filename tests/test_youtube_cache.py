@@ -73,6 +73,38 @@ class TestCacheBasica:
         assert cache.get("otro_video12", "en", "auto") is None
 
 
+class TestGetAny:
+    def test_devuelve_entrada_existente(self, cache: TranscriptCache) -> None:
+        cache.set(
+            "vid12345678", "es+en", "asr",
+            SEGMENTS, language_code="es", source="faster_whisper",
+        )
+        entry = cache.get_any("vid12345678")
+        assert entry is not None
+        assert entry["track_type"] == "asr"
+        assert entry["source"] == "faster_whisper"
+        assert entry["segments"] == SEGMENTS
+
+    def test_video_sin_entradas_devuelve_none(self, cache: TranscriptCache) -> None:
+        assert cache.get_any("no_existe123") is None
+
+    def test_prefiere_la_mas_reciente(self, cache: TranscriptCache) -> None:
+        cache.set("vid12345678", "es", "manual", SEGMENTS, source="viejo")
+        cache.set("vid12345678", "es+en", "asr", SEGMENTS, source="nuevo")
+        entry = cache.get_any("vid12345678")
+        assert entry is not None
+        assert entry["source"] == "nuevo"
+
+    def test_expirada_devuelve_none_y_purga(self, tmp_path: Path) -> None:
+        with TranscriptCache(db_path=tmp_path / "t.db", ttl=timedelta(seconds=-1)) as c:
+            c.set("vid12345678", "es", "manual", SEGMENTS)
+            assert c.get_any("vid12345678") is None
+            row = c._conn.execute(
+                "SELECT COUNT(*) AS n FROM transcripts"
+            ).fetchone()
+            assert row["n"] == 0
+
+
 class TestTTL:
     def test_entrada_fresca_persiste(self, tmp_path: Path) -> None:
         with TranscriptCache(db_path=tmp_path / "t.db", ttl=timedelta(days=7)) as c:

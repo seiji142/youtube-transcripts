@@ -233,6 +233,15 @@ de cuenta en nuestro flujo.
       (§8) marcados `[x]`
 
 ### FASE 2 — Fallback real (videos sin captions)
+
+#### Decisiones — Bloque D (jobs/worker), 23/09/2026
+
+| # | Decisión | Por qué |
+|---|----------|---------|
+| D1 | **Worker = thread daemon dentro de `mcp_server`** (no proceso aparte) | Un solo proceso que operar en Windows. SQLite (`youtube_jobs`) hace el estado **durable**: si el proceso muere, el job queda `pending`/`processing` y se retoma al reiniciar (`reclaim_stale` por heartbeat vencido). `BackgroundTasks` queda descartado (no durable). Reintentos con backoff vía `attempts`/`next_attempt_at`. |
+| D2 | **Integración ASR real → al cierre de Fase 2** (no en este bloque) | El cableado ya está probado (smoke `tiny` PASS 23/09). La corrida con modelo `small` (~460 MB primera vez) + video sin captions es el criterio de aceptación §8; hacerla ahora no aporta a la implementación y cuesta la descarga. Queda como último paso antes de cerrar Fase 2. |
+| D3 | **`youtube_transcript_read` con `start/end` en segundos** (+ `max_chars` como tope) | Coherente con `TranscriptSegment.start/end`, con las citas `&t=620s` de Fase 3 y con cómo se habla de un video ("del minuto 1 al 3"). `max_chars` evita devolver murallas de texto. Offset de caracteres descartado: desconectado del tiempo del video y frágil de convertir. |
+
 - [x] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
       — `services/youtube_subtitles.py` (parser VTT: multi-línea,
       horas opcionales, coma/millis, tags inline, modo rolling para
@@ -243,17 +252,57 @@ de cuenta en nuestro flujo.
       deshabilitable con `enable_subtitle_fallback=False` —
       **108/108 tests offline en verde 23/09/2026**
       (`yt-dlp==2026.8.19` en `requirements.txt`)
-- [ ] Descarga solo-audio (`bestaudio`, template controlado, temp aislado)
-- [ ] Instalar FFmpeg (winget/Choco) y `faster-whisper` (`small`, cpu, int8)
-      — **FFmpeg NO instalado** (verificado 23/09: sin winget, PATH ni
-      binario en el repo); `faster-whisper` pendiente de instalar
-- [ ] Tabla `youtube_jobs` en SQLite + worker separado (no solo
+- [x] Descarga solo-audio (`bestaudio`, template controlado, temp aislado)
+      — `services/youtube_audio.py` (`YtDlpAudioDownloader`: outtmpl
+      interna con video_id validado, `mkdtemp` por descarga,
+      `FFmpegExtractAudio`→wav 16kHz, `cleanup()` idempotente,
+      errores `AudioDownloadFailed`) — 7 tests
+      (`tests/test_youtube_audio.py`)
+- [x] Instalar FFmpeg (winget/Choco) y `faster-whisper` (`small`, cpu, int8)
+      — **FFmpeg 9.0.2** instalado 23/09 vía `winget install Gyan.FFmpeg`;
+      `faster-whisper==1.2.1` en `.venv` (+ `requirements.txt`);
+      ASR en `services/youtube_asr.py` (`FasterWhisperTranscriber`,
+      lazy-load, modelo inyectable, errores `AsrFailed`) — 8 tests
+      (`tests/test_youtube_asr.py`). **Smoke real 23/09 PASS**: video
+      `jNQXAC9IVRw` → wav 3.5MB/19s → ASR `en` prob 0.95 → cleanup OK
+      (smoke con modelo `tiny` solo para validar cableado; producción
+      usa `small` — se descarga en el primer job real)
+- [x] Tabla `youtube_jobs` en SQLite + worker separado (no solo
       BackgroundTasks: durable, heartbeat, reintentos con backoff)
-- [ ] Tools de este servidor: `youtube_transcript_status` + lectura
+      — `services/youtube_jobs.py` (idempotente `video_id:lang_key`,
+      `claim_next` con `BEGIN IMMEDIATE`, backoff `30s*2^n`, máx 3
+      intentos, `reclaim_stale` por heartbeat >15min, `requeue`) +
+      `services/youtube_worker.py` (`AsrWorker.run_once/run_forever`,
+      stage downloading→transcribing, `duration ≤7200` check,
+      errores terminales `duration_exceeded`/`asr_failed`, rate
+      limiter compartido con el servicio) — **24 + 13 tests**;
+      thread daemon en `mcp_server.main()` (D1, disable con
+      `YOUTUBE_WORKER=0`)
+- [x] Tools de este servidor: `youtube_transcript_status` + lectura
       paginada (`youtube_transcript_read` con `start/end/max_chars`)
-- [ ] Limpieza automática de audio y temporales + política LRU
-- [ ] Verificación: video sin captions → `processing` → `completed`,
-      texto en español correcto
+      — en `mcp_server.py`: status por `job_id` o URL (mapea
+      pending→processing); read por **segundos** (D3) con `max_chars`
+      (mín 1 segmento, flag `truncated`); `youtube_transcript` sin
+      captions ahora encola → `{"status":"processing","job_id"}`
+      (completed desde caché si el job ya terminó) — caché +
+      `get_any()` — **tests en `test_mcp_server.py`/`test_youtube_cache.py`**
+- [x] Limpieza automática de audio y temporales + política LRU
+      — audio: `cleanup()` en `finally` del worker (también en fallo,
+      criterio §8); temporales huérfanos: `sweep_temporals()` (prefijo
+      `youtube_transcripts_*`, mtime >1h) en cada iteración de
+      `run_forever` — **4 tests sweep + suite worker**
+- [x] Verificación: video sin captions → `processing` → `completed`,
+      texto en español correcto — **23/09/2026, split en2 evidencias
+      reales** (ver LECCIONES entrada "Verificación D2"): (a) trigger
+      real `ScMzIvxBSi4` sin captions → job encolado `processing`
+      (resultó ser video **sin habla** → `asr_failed` terminal
+      correcto); (b) pipeline real job `1m7fTsJzoao` (audio ES) →
+      audio8.13MB → `small` → **`Detected language 'es'
+      probability1.00`** → texto coherente → `completed` → `read`
+      OK → sin temporales. **Fase A agotada**:18/18 videos "last
+      hour" ya traen auto-captions (YouTube <1h) — "sin captions +
+      habla" ya no se consigue por búsqueda; se documenta como
+      limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
 - [ ] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
@@ -295,9 +344,9 @@ de cuenta en nuestro flujo.
 ```
 youtube-transcript-api==1.2.4   # API moderna v1.x (fetch)
 mcp                              # servidor MCP propio
-yt-dlp                           # Fase 2
-faster-whisper                   # Fase 2
-FFmpeg (sistema, winget/Choco)   # Fase 2
+yt-dlp==2026.8.19                # Fase 2 (subtítulos + audio)
+faster-whisper==1.2.1            # Fase 2 (ASR local)
+FFmpeg 9.0.2 (sistema, winget)   # Fase 2 (audio→wav) — Gyan.FFmpeg
 SQLite (stdlib) + FTS5           # Fase 3
 pytest, pytest-asyncio           # tests
 ```
@@ -318,16 +367,21 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
       — suite integración 8/8 verde (22/09/2026), verificado con red real
 - [x] Video EN con captions → transcripción con idioma detectado
       — suite integración 8/8 verde (22/09/2026), verificado con red real
-- [ ] Video sin captions → job async → transcripción local correcta
-      — **Fase 2** (no aplica aún)
+- [x] Video sin captions → job async → transcripción local correcta
+      — **Fase 2 (23/09)**: trigger real (`ScMzIvxBSi4` →
+      `processing`) + pipeline real (`1m7fTsJzoao` → `completed`,
+      `es` prob1.00, texto coherente); ver checkbox de verificación
+      §5 Fase 2 para el split de evidencias
 - [ ] Video largo → `search` devuelve chunks citados con `&t=`
       — **Fase 3** (no aplica aún)
 - [x] Repetir mismo video usa caché (sin re-extracción)
       — tests unit + demo `data/probe.db`
 - [x] URL inválida / video privado / playlist → error claro, sin crash
       — 35 tests parser + 6 tests errores
-- [ ] Audio temporal siempre eliminado tras ASR
-      — **Fase 2** (no aplica aún)
+- [x] Audio temporal siempre eliminado tras ASR
+      — **Fase 2**: `cleanup()` en `finally` del worker + sweep de
+      huérfanos; unit tests + corrida real verificada "sin
+      temporales" (23/09)
 - [x] brain-ai-01 no modificado en Fase 1
 
 ---

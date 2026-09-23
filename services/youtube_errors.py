@@ -57,3 +57,15 @@ class DurationExceeded(TranscriptError):
     """El video supera la duración máxima permitida (2h en v1)."""
 
     code = "duration_exceeded"
+
+
+class AudioDownloadFailed(TranscriptError):
+    """Fallo al descargar o convertir el solo-audio del video."""
+
+    code = "audio_download_failed"
+
+
+class AsrFailed(TranscriptError):
+    """Fallo en la transcripción local (faster-whisper)."""
+
+    code = "asr_failed"

@@ -14,9 +14,10 @@
 Versiones se fijan en Fase 1 (ver `docs/TAREAS_YOUTUBE.md` seccion 7):
 
 - `youtube-transcript-api==1.2.4` (captions, primera ruta, API v1.x)
-- `yt-dlp==2026.8.19` (subtítulos fallback, Fase 2 parcial — sin audio aún)
+- `yt-dlp==2026.8.19` (subtítulos fallback + descarga solo-audio, Fase 2)
+- FFmpeg 9.0.2 (sistema, winget `Gyan.FFmpeg`) — convierte audio→wav
+- `faster-whisper==1.2.1` (ASR local, modelo `small`, CPU int8) — Fase 2
 - `mcp` (servidor MCP propio)
-- `faster-whisper` (ASR local, modelo `small`, CPU int8) — Fase 2 pendiente
 - `pytest`, `pytest-asyncio` (tests)
 
 ## Variables de Entorno
@@ -34,10 +35,21 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 
 | Tool | Fase | Funcion |
 |------|------|---------|
-| `youtube_transcript` | 1 | Extrae transcripción (sync, captions) |
-| `youtube_transcript_status` | 2 | Estado de job ASR async |
-| `youtube_transcript_read` | 2 | Lectura paginada por rango |
+| `youtube_transcript` | 1 | Extrae transcripción (sync: captions → subtítulos; sin captions encola job ASR → `processing`) |
+| `youtube_transcript_status` | 2 | Estado de job ASR async (`job_id` o URL) |
+| `youtube_transcript_read` | 2 | Lectura paginada por rango en segundos (`start/end/max_chars`) |
 | `youtube_transcript_search` | 3 | Búsqueda FTS5 con citas `&t=` |
+
+### Archivos de servicio (Fase 2)
+
+| Archivo | Rol |
+|---------|-----|
+| `services/youtube_service.py` | orquestador (captions + fallback subtítulos) |
+| `services/youtube_subtitles.py` | fallback yt-dlp (parser VTT) |
+| `services/youtube_audio.py` | descarga solo-audio → wav (FFmpeg) |
+| `services/youtube_asr.py` | ASR local faster-whisper (small/cpu/int8) |
+| `services/youtube_jobs.py` | jobs ASR durables (SQLite, backoff, heartbeat) |
+| `services/youtube_worker.py` | worker ASR (thread daemon) + sweep de temporales |
 
 ## Convenciones de Archivos
 

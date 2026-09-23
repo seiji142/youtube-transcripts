@@ -36,6 +36,18 @@ def _parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
+def _entry_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "video_id": row["video_id"],
+        "lang": row["lang"],
+        "track_type": row["track_type"],
+        "language_code": row["language_code"],
+        "source": row["source"],
+        "segments": json.loads(row["segments_json"]),
+        "fetched_at": row["fetched_at"],
+    }
+
+
 class TranscriptCache:
     """Caché SQLite para segmentos de transcript."""
 
@@ -65,15 +77,27 @@ class TranscriptCache:
             self.delete(video_id, lang, track_type)
             return None
 
-        return {
-            "video_id": row["video_id"],
-            "lang": row["lang"],
-            "track_type": row["track_type"],
-            "language_code": row["language_code"],
-            "source": row["source"],
-            "segments": json.loads(row["segments_json"]),
-            "fetched_at": row["fetched_at"],
-        }
+        return _entry_from_row(row)
+
+    def get_any(self, video_id: str) -> dict[str, Any] | None:
+        """Devuelve la entrada más reciente y no expirada del video.
+
+        Ignora lang/track_type — pensado para tools de lectura (D3)
+        que no conocen con qué clave se guardó. Las expiradas se
+        purgan; si ninguna queda válida → ``None``.
+        """
+        rows = self._conn.execute(
+            "SELECT * FROM transcripts WHERE video_id = ? "
+            "ORDER BY fetched_at DESC, rowid DESC",
+            (video_id,),
+        ).fetchall()
+        for row in rows:
+            fetched_at = _parse_ts(row["fetched_at"])
+            if _utcnow() - fetched_at > self.ttl:
+                self.delete(row["video_id"], row["lang"], row["track_type"])
+                continue
+            return _entry_from_row(row)
+        return None
 
     def set(self, video_id: str, lang: str, track_type: str,
             segments: list[dict[str, Any]],
