@@ -1,5 +1,5 @@
 # Tareas - Análisis de Videos YouTube (servidor MCP propio)
-Ultima actualizacion: 22/09/2026
+Ultima actualizacion: 23/09/2026
 
 ---
 
@@ -233,9 +233,20 @@ de cuenta en nuestro flujo.
       (§8) marcados `[x]`
 
 ### FASE 2 — Fallback real (videos sin captions)
-- [ ] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
+- [x] Integrar `yt-dlp`: listar/descargar subtítulos (VTT→segmentos)
+      — `services/youtube_subtitles.py` (parser VTT: multi-línea,
+      horas opcionales, coma/millis, tags inline, modo rolling para
+      auto-captions; `YtDlpSubtitles.list_tracks/fetch` con selección
+      manual > auto > prefijo) + fallback en
+      `YouTubeService.get_transcript()` (captions → yt-dlp →
+      `no_captions`), cacheable con `source=yt_dlp_subtitles`,
+      deshabilitable con `enable_subtitle_fallback=False` —
+      **108/108 tests offline en verde 23/09/2026**
+      (`yt-dlp==2026.8.19` en `requirements.txt`)
 - [ ] Descarga solo-audio (`bestaudio`, template controlado, temp aislado)
 - [ ] Instalar FFmpeg (winget/Choco) y `faster-whisper` (`small`, cpu, int8)
+      — **FFmpeg NO instalado** (verificado 23/09: sin winget, PATH ni
+      binario en el repo); `faster-whisper` pendiente de instalar
 - [ ] Tabla `youtube_jobs` en SQLite + worker separado (no solo
       BackgroundTasks: durable, heartbeat, reintentos con backoff)
 - [ ] Tools de este servidor: `youtube_transcript_status` + lectura

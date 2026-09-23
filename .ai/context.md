@@ -14,9 +14,9 @@
 Versiones se fijan en Fase 1 (ver `docs/TAREAS_YOUTUBE.md` seccion 7):
 
 - `youtube-transcript-api==1.2.4` (captions, primera ruta, API v1.x)
+- `yt-dlp==2026.8.19` (subtítulos fallback, Fase 2 parcial — sin audio aún)
 - `mcp` (servidor MCP propio)
-- `yt-dlp` (subtítulos + descarga solo-audio) — Fase 2
-- `faster-whisper` (ASR local, modelo `small`, CPU int8) — Fase 2
+- `faster-whisper` (ASR local, modelo `small`, CPU int8) — Fase 2 pendiente
 - `pytest`, `pytest-asyncio` (tests)
 
 ## Variables de Entorno
@@ -44,6 +44,7 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 | Tipo | Destino | Ejemplo |
 |------|---------|---------|
 | Servicios/pipeline | `services/` | `youtube_service.py` |
+| Fallback subtítulos | `services/youtube_subtitles.py` | parser VTT + yt-dlp |
 | Servidor MCP | raíz | `mcp_server.py` |
 | Tests | `tests/` | `test_youtube_service.py` |
 | Docs de plan | `docs/` | `TAREAS_YOUTUBE.md` |

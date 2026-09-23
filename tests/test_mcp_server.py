@@ -24,6 +24,10 @@ class TestRegistroTools:
         assert mcp_server._service is not None
         assert mcp_server._service.cache is mcp_server._cache
 
+    def test_service_tiene_fallback_subtitles(self) -> None:
+        assert mcp_server._service._enable_subtitle_fallback is True
+        assert mcp_server._service._subtitles is not None
+
 
 class TestYoutubeTranscriptTool:
     def test_url_invalida_devuelve_error_estructurado(self) -> None:
@@ -47,3 +51,9 @@ class TestYoutubeTranscriptTool:
         with pytest.raises(InvalidYouTubeUrl):
             # el servicio sí lanza; la tool lo atrapa — aquí probamos el servicio
             mcp_server._service.get_transcript("not-a-url")
+
+    def test_fallback_subtitles_inyectable_en_service(self) -> None:
+        """YouTubeService acepta enable_subtitle_fallback para tests sin red."""
+        from services.youtube_service import YouTubeService
+        svc = YouTubeService(enable_subtitle_fallback=False)
+        assert svc._enable_subtitle_fallback is False

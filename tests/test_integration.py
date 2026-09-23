@@ -41,7 +41,9 @@ BASE_BACKOFF_SECONDS = 5.0
 @pytest.fixture
 def service(tmp_path: Path) -> YouTubeService:
     cache = TranscriptCache(db_path=tmp_path / "integration.db")
-    return YouTubeService(cache=cache)
+    # enable_subtitle_fallback=False: la suite de integración valida
+    # captions (Fase 1); el fallback yt-dlp se valida en unit tests.
+    return YouTubeService(cache=cache, enable_subtitle_fallback=False)
 
 
 def _fetch_with_backoff(

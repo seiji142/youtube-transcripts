@@ -6,19 +6,20 @@ servidor MCP propio que expone transcripción con timestamps.
 
 ## Estado
 
-**Fase 1 completa** (MVP captions + servidor MCP propio).
-Pendiente aparte: suite de integración con red (bloqueo 429 previo,
-ver `docs/TAREAS_YOUTUBE.md` §4).
+**Fase 1 completa** (MVP captions + servidor MCP propio) +
+**Fase 2 parcial** (fallback subtítulos yt-dlp implementado).
+Suite offline **108/108**; integración con red **8/8** (22/09).
 
-Fases 2-4 pendientes. Ver `docs/TAREAS_YOUTUBE.md`.
+Pendiente Fase 2: audio + faster-whisper + jobs async.
+Ver `docs/TAREAS_YOUTUBE.md`.
 
 ## Estructura
 
 | Ruta | Contenido |
 |------|-----------|
-| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit` |
+| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles` |
 | `mcp_server.py` | Servidor MCP propio (tool `youtube_transcript`) |
-| `tests/` | 83 unit + 8 integración (marcador `integration`) |
+| `tests/` | 108 unit + 8 integración (marcador `integration`) |
 | `data/` | SQLite local (caché, gitignored) |
 | `docs/TAREAS_YOUTUBE.md` | Plan, fases, criterios de aceptación |
 | `docs/investigacion-youtube/` | 4 docs de investigación externa |
@@ -30,9 +31,9 @@ Fases 2-4 pendientes. Ver `docs/TAREAS_YOUTUBE.md`.
 
 ```
 youtube-transcript-api (captions)   ← Fase 1 ✅
-  → yt-dlp subtítulos                ← Fase 2
-    → yt-dlp audio + faster-whisper  ← Fase 2
-      → SQLite caché + jobs + FTS5   ← Fase 1 caché / Fase 3 jobs+FTS
+  → yt-dlp subtítulos                ← Fase 2 ✅ (fallback implementado)
+    → yt-dlp audio + faster-whisper  ← Fase 2 (pendiente)
+      → SQLite caché ✅ + jobs + FTS5
         → tools MCP: transcript ✅ / status / read / search
 ```
 

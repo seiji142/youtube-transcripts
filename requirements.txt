@@ -3,6 +3,7 @@
 # Python 3.10.7 — ver docs/TAREAS_YOUTUBE.md seccion 7.
 
 youtube-transcript-api==1.2.4
+yt-dlp==2026.8.19
 mcp
 pytest
 pytest-asyncio
