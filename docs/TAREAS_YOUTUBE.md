@@ -319,9 +319,16 @@ de cuenta en nuestro flujo.
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
 - [ ] Publicar (cuando decidas): PR `develop → main` manual en la UI
-      (main exige PR, sin approvals) o Fase 5 (`gh` + PAT) para PRs
-      vía CLI. `master` legacy congelada en `830914e` (borrar cuando
-      el flujo esté validado).
+      (main exige PR, sin approvals) o **Fase 5 lista** (25/09):
+      `scripts/gh-publish.ps1` copiado del template (sin Pages);
+      Paso 0 del usuario hecho (PAT con los 3 repos, Contents+PRs
+      RW): `gh auth status` OK + `gh pr list` exit 0. Detalle de
+      protección vía CLI queda en 403 a propósito (exige
+      Administration read, omitido por mínimo privilegio; ya
+      verificado anónimo + UI el 23/09). Publicar con
+      `.\scripts\gh-publish.ps1 -Merge` (primera prueba real de
+      escritura). `master` legacy congelada en `830914e` (borrar
+      cuando el flujo esté validado).
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
     (sin approvals). `master` legacy congelada en `830914e`.

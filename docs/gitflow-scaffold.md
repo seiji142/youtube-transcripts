@@ -73,15 +73,30 @@ git status      # working tree limpio
 
 ### Fase 5 — Autenticar `gh` con token (opcional, para PRs vía CLI)
 
-> **Estado en este proyecto (23/09/2026): `gh` SIN autenticar.** PRs
-> `develop → main` manuales en la UI, o seguir estos pasos.
+> **Estado en este proyecto (25/09/2026): lista.** Paso 0 del usuario
+> hecho (PAT con `seiji142/youtube-transcripts` + Contents/PRs RW):
+> `gh auth status` OK, `gh pr list` exit 0. Escritura real pendiente
+> del primer PR (`.\scripts\gh-publish.ps1 -Merge` al publicar).
+> Playbook validado: `templates/gitflow-scaffold/CONFIG_API_TOKEN_PASO_A_PASO.md`
+> (25/09/2026, proyecto portfolio).
 
 Con `main` protegido (PR obligatorio), la CLI permite crear/mergear PRs sin
 abrir la UI. SSH y el token de API son **capas distintas**: SSH autentica
 git push/pull; el token autentica la API REST de GitHub (PRs, settings,
 lectura de protección). SSH **no** sustituye al token.
 
-#### A. Crear el token (en GitHub, manual)
+#### Paso 0 — Ampliar el PAT existente (en GitHub, manual; sin secretos)
+
+El `GH_TOKEN` vigente es el PAT fine-grained de portfolio (*Only select
+repositories*). En vez de crear otro token: GitHub → avatar →
+**Settings** → **Developer settings** → **Personal access tokens** →
+**Fine-grained tokens** → el token → *Repository access → Only select
+repositories* → **agregar `seiji142/youtube-transcripts`** → verificar
+permisos (*Contents* RW, *Pull requests* RW, ideal +*Actions* R) →
+**Update token**. El valor **no cambia**: `GH_TOKEN` sigue válido, nada
+que pegar en ningún lado.
+
+#### A. Crear un token nuevo (solo si el Paso 0 no aplica)
 
 1. GitHub → avatar → **Settings** → **Developer settings** (izquierda, abajo)
    → **Personal access tokens**.
@@ -90,9 +105,12 @@ lectura de protección). SSH **no** sustituye al token.
    - **Permissions → Repository permissions:**
      - *Contents:* **Read and write** (para mergear)
      - *Pull requests:* **Read and write** (crear/mergear PRs)
+     - *Actions:* **Read** (ver deploys con `gh run list`)
    - **Expiration:** 90 días (o la que prefieras).
 3. *(Alternativa clásica: token classic con scope `repo` — da más permisos de los necesarios.)*
-4. Copiar el token apenas lo genera (solo se muestra una vez).
+4. Copiar el token apenas lo genera (solo se muestra una vez), y guardarlo
+   en terminal propia (nunca en el chat):
+   `[Environment]::SetEnvironmentVariable("GH_TOKEN", "<tu token>", "User")`
 
 #### B. Autenticar `gh` (terminal)
 
@@ -109,13 +127,44 @@ gh auth login
 [Environment]::SetEnvironmentVariable("GH_TOKEN", "<PEGAR_TOKEN_AQUÍ>", "User")
 ```
 
-#### C. Verificar
+#### C. Verificar (sin revelar el valor)
 
 ```powershell
+# GH_TOKEN existe a nivel User pero el proceso abierto antes no la hereda:
+# auto-cargarla (los scripts del repo ya lo hacen solos)
+if (-not $env:GH_TOKEN) {
+    $env:GH_TOKEN = [Environment]::GetEnvironmentVariable("GH_TOKEN", "User")
+}
 gh auth status
-gh api repos/seiji142/youtube-transcripts/branches/main/protection
-# → ahora sí muestra el detalle completo (required_pull_request_reviews, etc.)
+gh pr list --repo seiji142/youtube-transcripts
+# Detalle de protección: la API anónima ya probó protected=true (23/09);
+# con este PAT da 403 porque leer branch protection exige el permiso
+# Administration (read), que se omite a propósito (mínimo privilegio).
+# Opcional: agregarlo al PAT si algún día hace falta el detalle vía CLI.
 ```
+
+#### D. Script `scripts/gh-publish.ps1` (cero fricción)
+
+Copiado del template con una adaptación (sin mensaje de GitHub Pages;
+este repo es Python/MCP). Sin secretos: lee `GH_TOKEN` del registro
+en runtime.
+
+```powershell
+.\scripts\gh-publish.ps1           # crea PR develop -> main
+.\scripts\gh-publish.ps1 -Merge    # crea PR y lo mergea (cero clics)
+```
+
+#### Gotchas (del playbook validado 25/09 + LECCIONES)
+
+- Procesos abiertos antes de crear `GH_TOKEN` no la heredan → el
+  script la auto-carga; nunca imprimir su valor (verificar con
+  `gh auth status`).
+- **403 `Resource not accessible by personal access token`**:
+  lectura OK + escritura 403 = permisos del token; **lectura 403 en
+  repo público = el repo no está en *Repository access*** (o token
+  vencido) — ver LECCIONES 25/09. Se corrige con *Update token* sin
+  cambiar el valor.
+- Expiración (90 días): repetir Paso 0/A; única fricción recurrente.
 
 #### Reglas de seguridad (obligatorias)
 
@@ -317,11 +366,10 @@ git merge feature/<desc>
 - [x] `develop` creada y subida con tracking (`origin/develop`).
 - [x] `main` con branch protection (require PR, SIN require approvals).
 - [ ] `gh` autenticado (GH_TOKEN / `gh auth login`) para PRs `develop → main`
-      vía CLI — opcional: PRs manuales en la UI (ver Fase 5).
-- [ ] `on: push branches: [main]` en el workflow Pages.
-- [ ] Base relativa (`base: "./"`) y rutas relativas en data/assets.
-- [ ] `npm run build` exitoso y sin rutas absolutas (`/img`, `/cv-`) en el dist.
-- [ ] Heuristica de emoji compatible con rutas relativas (cards de proyectos muestran imagenes).
-- [ ] Settings → Pages → Source: **GitHub Actions**.
-- [ ] Sitio visible en `https://<usuario>.github.io/<repo>/`.
-- [ ] Flujo documentado en `.ai/context.md` y memoria persistente.
+      vía CLI — **en curso 25/09**: `gh auth status` OK, falta Paso 0
+      del usuario (agregar repo al PAT) — ver Fase 5. Opcional: PRs
+      manuales en la UI.
+- [ ] N/A en este repo (Q1: sin Pages): `on: push branches: [main]`,
+      base relativa, `npm run build`, heurística de emoji, Settings →
+      Pages, sitio visible. Solo aplica `Flujo documentado`:
+- [x] Flujo documentado en `.ai/context.md` y memoria persistente.

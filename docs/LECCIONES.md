@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — PAT fine-grained de otro repo: 403 hasta en LECTURAS de repo público
+
+**Tipo:** C (output inesperado — cambia el plan de verificación Fase 5)
+**Comando:** `$env:GH_TOKEN = [Environment]::GetEnvironmentVariable("GH_TOKEN","User"); gh pr list --repo seiji142/youtube-transcripts` (y `gh api repos/.../branches/main/protection`)
+**Error/Warning:** `gh: Resource not accessible by personal access token (HTTP 403)` en ambos (lectura de PRs y de protección). `gh auth status` previo: OK (`seiji142`, token `github_pat_...` válido).
+**Causa raíz:** El PAT fine-grained vigente está en *Repository access → Only select repositories* (solo portfolio): GitHub lo deja **ciego fuera de sus repos, incluso para lecturas de repos públicos**. La nota de la UI ("los PAT siempre leen repos públicos") no aplica cuando el acceso es *Only select repositories*. Evidencia: la misma lectura por API anónima sí funcionaba el 23/09 (`protected=True`).
+**Fix:** Ninguno en código — reordena la Fase 5: el **Paso 0 del usuario en el navegador** (agregar `seiji142/youtube-transcripts` al PAT + *Update token*) es prerrequisito **también para verificar lecturas**, no solo escritura. Re-ejecutar la verificación tras su confirmación.
+**Verificación:** pendiente (bloqueado en Paso 0 del usuario).
+**Lección:** Con fine-grained *Only select repositories*, el token no existe fuera de sus repos (403 en todo). El diagnóstico del playbook se amplía: *lectura OK + escritura 403 = permisos; lectura 403 en repo público = el repo no está en Repository access (o token vencido/revocado)*.
+
+---
+
 ## 2026-09-25 — SyntaxError en test nuevo: `def test_overall trae_...` sin guion bajo
 
 **Tipo:** A (error duro — collection error de pytest)
