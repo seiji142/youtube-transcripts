@@ -318,12 +318,11 @@ de cuenta en nuestro flujo.
 - [ ] Pendiente no-bloqueante: guardar episodio en memoria
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
-- [ ] Publicar (cuando decidas): **PR #1 creado 25/09**
+- [x] Publicar: **PR #1 MERGEADO 25/09**
       (https://github.com/seiji142/youtube-transcripts/pull/1,
-      `develop → main`, 5 commits, MERGEABLE, sin mergear) vía
-      `.\scripts\gh-publish.ps1` — **escritura del PAT verificada
-      real** ✅ (Fase 5 completa). Mergear con
-      `.\scripts\gh-publish.ps1 -Merge` o en la UI. `master` legacy
+      `develop → main`, 6 commits, merge `7a3a9c0`) vía
+      `.\scripts\gh-publish.ps1 -Merge` — **v1 publicado en `main`**
+      por flujo PR (sin commits directos). `master` legacy
       congelada en `830914e` (borrar cuando el flujo esté validado).
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
