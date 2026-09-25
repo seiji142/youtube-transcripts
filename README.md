@@ -6,23 +6,24 @@ servidor MCP propio que expone transcripción con timestamps.
 
 ## Estado
 
-**Fase 1 y Fase 2 completas**: captions + subtítulos yt-dlp, audio
+**Fases 1, 2 y 3 completas**: captions + subtítulos yt-dlp, audio
 +FFmpeg, ASR local faster-whisper (verificado real: `es` prob 1.00),
-jobs async con worker durable, tools `status`/`read`.
-Suite offline **186/186**; integración con red **8/8** (22/09);
-verificación ASR real **PASS** (23/09, ver `docs/LECCIONES.md`).
+jobs async con worker durable, tools `status`/`read`; **RAG FTS5**
+(chunking 500-1000 tokens + overlap 12% + tool `search` con citas
+`&t=`). Suite **263/263** y verificación real de `search` **PASS**
+(25/09, ver `docs/LECCIONES.md`).
 
-Siguiente: **Fase 3** (RAG/FTS5 + tool `search`). Ver
+Siguiente: **Fase 4** (resiliencia + resúmenes jerárquicos). Ver
 `docs/TAREAS_YOUTUBE.md`.
 
 ## Estructura
 
 | Ruta | Contenido |
 |------|-----------|
-| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles`, `youtube_audio`, `youtube_asr`, `youtube_jobs`, `youtube_worker` |
-| `mcp_server.py` | Servidor MCP propio (`youtube_transcript`, `_status`, `_read`) + thread worker ASR |
-| `tests/` | 186 unit + 8 integración (marcador `integration`) |
-| `data/` | SQLite local (caché + jobs, gitignored) |
+| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles`, `youtube_audio`, `youtube_asr`, `youtube_jobs`, `youtube_worker`, `youtube_chunking`, `youtube_index` |
+| `mcp_server.py` | Servidor MCP propio (`youtube_transcript`, `_status`, `_read`, `_search`) + thread worker ASR |
+| `tests/` | 255 unit + 8 integración (marcador `integration`) |
+| `data/` | SQLite local (caché + jobs + índice FTS5, gitignored) |
 | `docs/TAREAS_YOUTUBE.md` | Plan, fases, decisiones, criterios de aceptación |
 | `docs/investigacion-youtube/` | 4 docs de investigación externa |
 | `requirements.txt` | Deps fijadas (instalar en `.venv`, no global) |
@@ -35,8 +36,8 @@ Siguiente: **Fase 3** (RAG/FTS5 + tool `search`). Ver
 youtube-transcript-api (captions)   ← Fase 1 ✅
   → yt-dlp subtítulos                ← Fase 2 ✅ (fallback implementado)
     → yt-dlp audio + faster-whisper  ← Fase 2 ✅ (worker async, verificado real)
-      → SQLite caché ✅ + jobs ✅ + FTS5 (Fase 3)
-        → tools MCP: transcript ✅ / status ✅ / read ✅ / search (Fase 3)
+      → SQLite caché ✅ + jobs ✅ + FTS5 ✅ (índice de chunks, lazy)
+        → tools MCP: transcript ✅ / status ✅ / read ✅ / search ✅
 ```
 
 ## Integración

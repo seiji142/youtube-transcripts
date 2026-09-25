@@ -307,34 +307,61 @@ de cuenta en nuestro flujo.
       habla" ya no se consigue por búsqueda; se documenta como
       limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
-### PRÓXIMA SESIÓN (23/09/2026) — Arrancar FASE 3
-- [ ] Fase 3 (ver §5): chunking500-1000 tokens / overlap10-15% → índice
-      FTS5 `transcript_chunks_fts` → tool `youtube_transcript_search`
-      con citas `https://www.youtube.com/watch?v=ID&t=620s`. Todo sobre
-      `develop`; decisiones nuevas → `docs/DECISIONES.md` (sección
-      Fase 3 abierta); errores de shell → `docs/LECCIONES.md` §10.
+### PRÓXIMA SESIÓN (25/09/2026) — FASE 3 CERRADA, arrancar FASE 4
+- [x] Fase 3 implementada y verificada (25/09): chunking + FTS5 + tool
+      `youtube_transcript_search` con citas `&t=` — **263 tests en
+      verde** + verificación real con video `1m7fTsJzoao` (566s);
+      decisiones en `docs/DECISIONES.md` (sección Fase 3); error de
+      test registrado en `docs/LECCIONES.md` §10. **FASE 3 CERRADA** ✅
+- [ ] Arrancar Fase 4 (ver §5): `TranscriptProvider`, circuit
+      breaker, métricas; **resúmenes jerárquicos** (movidos desde
+      Fase 3) según alcance acordado.
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
     (sin approvals). `master` legacy congelada en `830914e`.
-  - **Bridge MCP `brain-ai` desconectado** en la última sesión (HTTP
-    `/health` → 200 OK, solo falta el bridge): reiniciar opencode para
-    recuperar las tools de memoria/tests; mientras tanto, fallback
-    `POST /ingest` (`brain-ai-01/clients/memoria.py`) y pytest por bash.
+  - **Tools MCP `brain-ai` activas** en la sesión 25/09 (memoria/tests
+    OK tras reinicio de opencode).
   - **`gh` sin autenticar:** PRs `develop → main` manuales en la UI, o
     seguir **Fase 5** de `docs/gitflow-scaffold.md` (PAT fine-grained).
 
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
-- [ ] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
-      con timestamps
-- [ ] Índice SQLite FTS5 (`transcript_chunks_fts`)
-- [ ] Tool `youtube_transcript_search` (`transcript_id`, `query`, `top_k`)
-- [ ] Respuestas con citas temporales
-      (`https://www.youtube.com/watch?v=ID&t=620s`)
-- [ ] Resúmenes jerárquicos para videos largos
-- [ ] Verificación: preguntar sobre un video largo y recibir fragmentos
-      citados, no la transcripción entera
+- [x] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
+      con timestamps — `services/youtube_chunking.py`
+      (`chunk_transcript`: chars/4, greedy por cues, frontera de
+      oración best-effort, overlap 12%, cues gigantes → oraciones +
+      corte duro con reparto temporal) — **30 tests**
+      (`tests/test_youtube_chunking.py`)
+- [x] Índice SQLite FTS5 (`transcript_chunks_fts`) —
+      `services/youtube_index.py`: tabla normal `transcript_chunks` +
+      FTS5 *external content*, `index_transcript` idempotente,
+      `ensure_indexed` lazy, búsqueda BM25 filtrada por `video_id`,
+      query saneada a literales `OR` — **29 tests**
+      (`tests/test_youtube_index.py`)
+- [x] Tool `youtube_transcript_search` (`url`, `query`, `top_k`) —
+      en `mcp_server.py`: valida URL, `transcript_not_found` con hint
+      si no hay transcripción, indexa on-demand, `top_k` 1..20,
+      errores estructurados sin crash — **11 tests**
+      (`tests/test_mcp_server.py`)
+- [x] Respuestas con citas temporales
+      (`https://www.youtube.com/watch?v=ID&t=620s`) — `url` por
+      resultado con `int(start)` segundos (`test_cita_usa_segundos_...`)
+- _Resúmenes jerárquicos para videos largos → **movido a Fase 4**_
+      (decisión 25/09, ver `docs/DECISIONES.md`)
+- [x] Verificación: preguntar sobre un video largo y recibir fragmentos
+      citados, no la transcripción entera — **25/09/2026, video real
+      `1m7fTsJzoao` (566s, ASR es en caché)**: 2 chunks indexados
+      (903 + 813 tokens, overlap 302.55s < 334.15s), query
+      "azulejos" → 1 chunk con cita
+      `https://www.youtube.com/watch?v=1m7fTsJzoao&t=8s`, query
+      "mermelada naranja" → chunk con `&t=8s`, ningún resultado
+      devolvió la transcripción entera (script
+      `verify_fase3_search.py`, EXIT=0)
+- [x] Suite completa en verde — **263 passed 25/09/2026**
+      (error registrado en `docs/LECCIONES.md` 25/09)
 
 ### FASE 4 — Resiliencia y operación
+- [ ] Resúmenes jerárquicos para videos largos
+      (movidos desde Fase 3 — decisión 25/09)
 - [ ] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
       `YtDlpSubtitleProvider`, `FasterWhisperProvider`,
       `ExternalAsrProvider` opcional) con enable/disable por config
@@ -391,8 +418,10 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
       `processing`) + pipeline real (`1m7fTsJzoao` → `completed`,
       `es` prob1.00, texto coherente); ver checkbox de verificación
       §5 Fase 2 para el split de evidencias
-- [ ] Video largo → `search` devuelve chunks citados con `&t=`
-      — **Fase 3** (no aplica aún)
+- [x] Video largo → `search` devuelve chunks citados con `&t=`
+      — **Fase 3 (25/09)**: video real `1m7fTsJzoao` (566s) → 2
+      chunks (903/813 tokens) con citas `&t=8s`, sin transcripción
+      entera; ver checkbox de verificación §5 Fase 3
 - [x] Repetir mismo video usa caché (sin re-extracción)
       — tests unit + demo `data/probe.db`
 - [x] URL inválida / video privado / playlist → error claro, sin crash

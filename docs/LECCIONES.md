@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — Test de timestamps asumió chunk de 1 segmento (50.0 != 5.0)
+
+**Tipo:** A (error duro — test fallido)
+**Comando:** `.venv\Scripts\python.exe -m pytest tests/ -q`
+**Error/Warning:** `E assert 50.0 == 5.0` en `tests/test_youtube_index.py:220` (`TestSearch::test_timestamps_preservados_en_resultado`) — `1 failed, 262 passed in 21.80s`
+**Causa raíz:** El test sembraba 10 segmentos de 5s (transcript total 50s ≈ 100 tokens → 1 solo chunk, por debajo de `min_tokens=500`) y esperaba `end == 5.0` (fin del primer segmento). El chunk cubre los 10 segmentos → `end == 50.0`, que es el comportamiento correcto por diseño (`start`/`end` = primer/último segmento del chunk). Expectativa del test, no bug del chunking.
+**Fix:** Ajustar la aserción a `start == 0.0` y `end == 50.0` con comentario "transcript corto → 1 chunk".
+**Verificación:** suite completa en verde: `263 passed in 20.73s` (25/09/2026).
+**Lección:** Al testear timestamps de chunks, calcular el `end` esperado según cuántos segmentos caben en el chunk (transcript corto = 1 chunk que cubre todo el rango), no asumir el fin del primer segmento.
+
+---
+
 ## 2026-09-23 — Smoke ASR: Python 3.10 deprecado para huggingface_hub
 
 **Tipo:** B (warning relevante — deprecation)

@@ -1,11 +1,13 @@
 """Servidor MCP propio de youtube-transcripts.
 
-Tools (Fase 2):
+Tools (Fase 2+3):
 - ``youtube_transcript`` — extracción síncrona (captions → subtítulos);
   sin captions encola un job ASR y responde ``processing`` (D1).
 - ``youtube_transcript_status`` — estado de un job ASR.
 - ``youtube_transcript_read`` — lectura paginada por rango en segundos
   (D3: ``start``/``end`` en segundos + ``max_chars`` como tope).
+- ``youtube_transcript_search`` — búsqueda FTS5 sobre chunks del video
+  con citas temporales ``&t=`` (Fase 3).
 
 Al arrancar (``main``) lanza el worker ASR como thread daemon en el
 mismo proceso (decisión D1). Independiente de brain-ai-01. stdio.
@@ -21,6 +23,7 @@ from mcp.server.mcpserver import MCPServer
 
 from services.youtube_cache import TranscriptCache
 from services.youtube_errors import NoCaptionsAvailable, TranscriptError
+from services.youtube_index import MAX_TOP_K, TranscriptIndex
 from services.youtube_jobs import JobStore
 from services.youtube_service import YouTubeService
 from services.youtube_urls import extract_video_id
@@ -37,6 +40,7 @@ DB_PATH = Path("data") / "youtube.db"
 _cache = TranscriptCache(db_path=DB_PATH)
 _service = YouTubeService(cache=_cache)
 _jobs = JobStore(db_path=DB_PATH)
+_index = TranscriptIndex(db_path=DB_PATH)
 _worker = AsrWorker(
     jobs=_jobs,
     cache=_cache,
@@ -279,6 +283,99 @@ def youtube_transcript_read(
             for seg in taken
         ]
     return payload
+
+
+@mcp.tool(
+    name="youtube_transcript_search",
+    description=(
+        "Busca texto en la transcripción de un video (búsqueda FTS5 sobre "
+        "chunks con BM25) y devuelve los fragmentos más relevantes con "
+        "cita temporal https://www.youtube.com/watch?v=ID&t=620s. Requiere "
+        "que el video ya tenga transcripción (si no, llamar antes "
+        "youtube_transcript). La primera búsqueda indexa el video (lazy)."
+    ),
+)
+def youtube_transcript_search(
+    url: str,
+    query: str,
+    top_k: int = 5,
+) -> dict[str, Any]:
+    """Devuelve los chunks más relevantes para una consulta, con citas.
+
+    Args:
+        url: URL pública del video (misma validación que youtube_transcript).
+        query: Texto libre a buscar en la transcripción.
+        top_k: Máximo de fragmentos a devolver (1..20).
+    """
+    if not query or not query.strip():
+        return {
+            "status": "error",
+            "code": "invalid_request",
+            "message": "query no puede estar vacía",
+        }
+    if top_k < 1 or top_k > MAX_TOP_K:
+        return {
+            "status": "error",
+            "code": "invalid_request",
+            "message": f"top_k debe estar en [1, {MAX_TOP_K}]",
+        }
+
+    try:
+        video_id = extract_video_id(url)
+    except TranscriptError as exc:
+        return exc.to_dict()
+
+    entry = _cache.get_any(video_id)
+    if entry is None:
+        return {
+            "status": "error",
+            "code": "transcript_not_found",
+            "message": "No hay transcripción para ese video",
+            "video_id": video_id,
+            "hint": "Primero llamar youtube_transcript para extraerla",
+        }
+
+    try:
+        _index.ensure_indexed(
+            video_id, entry["lang"], entry["track_type"], entry["segments"],
+        )
+        results = _index.search(video_id, query, top_k=top_k)
+    except ValueError as exc:
+        return {
+            "status": "error",
+            "code": "invalid_request",
+            "message": str(exc),
+        }
+    except Exception as exc:  # noqa: BLE001 — nunca crashear el servidor
+        return {
+            "status": "error",
+            "code": "search_error",
+            "message": f"Error en la búsqueda: {exc}",
+            "video_id": video_id,
+        }
+
+    return {
+        "status": "completed",
+        "video_id": video_id,
+        "query": query,
+        "top_k": top_k,
+        "count": len(results),
+        "results": [
+            {
+                "rank": rank,
+                "chunk_index": row["chunk_index"],
+                "start": row["start"],
+                "end": row["end"],
+                "text": row["text"],
+                "score": row["score"],
+                "url": (
+                    f"https://www.youtube.com/watch?v={video_id}"
+                    f"&t={int(row['start'])}s"
+                ),
+            }
+            for rank, row in enumerate(results, start=1)
+        ],
+    }
 
 
 def main() -> None:

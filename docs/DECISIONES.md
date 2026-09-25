@@ -59,18 +59,29 @@ Orden cronológico inverso (más reciente arriba).
 
 ---
 
-## FASE 3 — RAG / experiencia NotebookLM (prevista, sin decidir)
+## FASE 3 — RAG / experiencia NotebookLM (25/09/2026)
 
-Secciones abiertas — se rellenan al arrancar la fase:
+| Decisión | Por qué | Evidencia |
+|----------|---------|-----------|
+| **Tokens = chars/4 (`est_tokens`), sin tokenizer externo** | Criterio de tamaño 500-1000 sin sumar dependencias (descartado `tiktoken`); suficiente para fijar chunking | `services/youtube_chunking.py`; `tests/test_youtube_chunking.py` |
+| **Chunking greedy por cues + frontera de oración best-effort** | El cue es atómico (un segmento normal no se parte); al cerrar un chunk se recorta la cola hasta el último cue que cierre oración sin bajar de `min_tokens`; si no existe, se conserva el llenado máximo | `chunk_transcript`; clase `TestFrontieraDeOracion` |
+| **Cue gigante (>max_tokens) → oraciones y luego corte duro por caracteres, con reparto temporal proporcional** | Ningún chunk supera el tope; las piezas conservan timestamps aproximados del cue original | `_split_oversize`; clase `TestSegmentosOversize` |
+| **Overlap 12% (ventana 10-15%) reinsertando la cola del chunk anterior, con progreso ≥1 unidad** | Cumple el criterio del plan y garantiza terminación aunque el overlap sea alto (probado con 0.99) | clase `TestSolapamiento` |
+| **Índice FTS5 *external content*: `transcript_chunks_fts` sobre la tabla normal `transcript_chunks`** | Texto guardado una sola vez + BM25 nativo de SQLite (FTS5 OK en SQLite 3.37.2 del venv); borrado explícito `'delete'` mantiene sincronizado el índice | `services/youtube_index.py`; clase `TestSchema` |
+| **Indexación lazy e idempotente en la primera búsqueda (`ensure_indexed`)** | Un video cacheado nunca consultado no paga el costo de chunking/index; reindexar borra+reinserta por `video_id+lang+track_type` sin duplicados | `test_indexacion_es_lazy` (test_mcp_server) + `test_reindexar_es_idempotente` |
+| **Query saneada a literales entre comillas unidos con `OR` (sin sintaxis FTS5 externa)** | `OR`/`*`/`"` del usuario no rompen el MATCH; `OR` maximiza el recall para `top_k`; términos sin caracteres de palabra se descartan | `build_match_query`; clase `TestBuildMatchQuery` |
+| **Tool `youtube_transcript_search(url, query, top_k=5)` con cita `&t=<segundos enteros>`** | Misma validación de URL que las otras tools; sin transcripción → `transcript_not_found` con hint de usar `youtube_transcript`; `top_k` acotado 1..20; errores nunca crashean el servidor | `mcp_server.py`; clase `TestSearchTool` |
+| **Resúmenes jerárquicos → Fase 4** (fuera del alcance de Fase 3) | Cerrar el alcance de la fase en chunking + FTS5 + search (decisión del usuario en sesión 25/09) | Este registro; TAREAS §5 movidos al bloque Fase 4 |
 
-- _Chunking:_ 500-1000 tokens, solapamiento10-15%, sin cortar frases, con timestamps (criterio del plan; pendiente elegir estrategia exacta).
-- _Índice:_ SQLite FTS5 `transcript_chunks_fts`.
-- _Tool:_ `youtube_transcript_search` con citas `https://www.youtube.com/watch?v=ID&t=620s`.
-- _Decisiones pendientes:_ tamaño óptimo de chunk medido con videos reales; si resúmenes jerárquicos van en Fase3 o4.
+Evidencia global: **263 tests en verde** (25/09/2026) + verificación real
+con video `1m7fTsJzoao` (566s): 2 chunks (903/813 tokens), queries
+"azulejos"/"mermelada naranja" → fragmentos con cita `&t=8s`, nunca la
+transcripción entera (script `verify_fase3_search.py`, EXIT=0).
 
 ## FASE 4 — Resiliencia y operación (prevista, sin decidir)
 
 - _Interfaz `TranscriptProvider`_ con enable/disable por config.
 - _Circuit breaker + backoff con jitter_ tras429 — red de seguridad, no prevención (esa es el RateLimiter de Fase1).
 - _Métricas por proveedor + endpoint de salud_; cuotas, concurrencia, retención.
+- _Resúmenes jerárquicos_ para videos largos (movidos desde Fase 3, decisión 25/09).
 - _Decisiones pendientes:_ umbrales del breaker; si ASR externo opcional entra en v1.

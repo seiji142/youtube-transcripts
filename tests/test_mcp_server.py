@@ -12,10 +12,12 @@ from mcp_server import (
     mcp,
     youtube_transcript,
     youtube_transcript_read,
+    youtube_transcript_search,
     youtube_transcript_status,
 )
 from services.youtube_cache import TranscriptCache
 from services.youtube_errors import InvalidYouTubeUrl, NoCaptionsAvailable
+from services.youtube_index import TranscriptIndex
 from services.youtube_jobs import JobStore
 
 VALID_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -36,6 +38,14 @@ def cache_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TranscriptCa
     monkeypatch.setattr(mcp_server, "_cache", cache)
     yield cache
     cache.close()
+
+
+@pytest.fixture
+def index_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TranscriptIndex:
+    index = TranscriptIndex(db_path=tmp_path / "index.db")
+    monkeypatch.setattr(mcp_server, "_index", index)
+    yield index
+    index.close()
 
 
 def _mock_no_captions(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -320,3 +330,122 @@ class TestReadTool:
         payload = youtube_transcript_read(VIDEO_ID, **kwargs)
         assert payload["status"] == "error"
         assert payload["code"] == "invalid_range"
+
+
+class TestSearchTool:
+    SEGMENTS = [
+        {"start": 0.0, "end": 5.0, "text": "intro del video sobre programacion."},
+        {"start": 5.0, "end": 10.0, "text": "hablamos de bases de datos e indices."},
+        {"start": 10.0, "end": 15.0, "text": "el motor cachimbo es muy rapido."},
+    ]
+
+    def _seed(self, cache: TranscriptCache) -> None:
+        cache.set(
+            VIDEO_ID, "es+en", "manual",
+            segments=self.SEGMENTS,
+            language_code="es", source="youtube_captions",
+        )
+
+    def test_herramienta_registrada(self) -> None:
+        async def _names() -> list[str]:
+            tools = await mcp.list_tools()
+            return [t.name for t in tools]
+
+        names = asyncio.run(_names())
+        assert "youtube_transcript_search" in names
+
+    def test_sin_transcripcion_da_transcript_not_found(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        payload = youtube_transcript_search(VALID_URL, "cachimbo")
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "transcript_not_found"
+        assert payload["video_id"] == VIDEO_ID
+        assert "hint" in payload
+
+    def test_query_vacia_da_invalid_request(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_search(VALID_URL, "   ")
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "invalid_request"
+
+    @pytest.mark.parametrize("top_k", [0, -1, 21])
+    def test_top_k_invalido_da_invalid_request(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+        top_k: int,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_search(VALID_URL, "cachimbo", top_k=top_k)
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "invalid_request"
+
+    def test_url_invalida_da_invalid_url(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_search("https://evil.com/watch?v=x", "hola")
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "invalid_url"
+
+    def test_busqueda_devuelve_fragmentos_con_cita(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_search(VALID_URL, "cachimbo")
+
+        assert payload["status"] == "completed"
+        assert payload["video_id"] == VIDEO_ID
+        assert payload["count"] >= 1
+        first = payload["results"][0]
+        assert first["rank"] == 1
+        assert "cachimbo" in first["text"]
+        # transcript corto → 1 chunk desde el inicio del video
+        assert first["url"] == (
+            f"https://www.youtube.com/watch?v={VIDEO_ID}&t=0s"
+        )
+        assert isinstance(first["score"], float)
+
+    def test_cita_usa_segundos_enteros_del_inicio(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        cache_store.set(
+            VIDEO_ID, "es+en", "manual",
+            segments=[
+                {"start": 620.5, "end": 625.0, "text": "cachimbo en accion."},
+                {"start": 625.0, "end": 630.0, "text": "sigue el video."},
+            ],
+            language_code="es", source="youtube_captions",
+        )
+
+        payload = youtube_transcript_search(VALID_URL, "cachimbo")
+
+        assert payload["results"][0]["url"].endswith("&t=620s")
+
+    def test_indexacion_es_lazy(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        self._seed(cache_store)
+        assert not index_store.is_indexed(VIDEO_ID, "es+en", "manual")
+
+        youtube_transcript_search(VALID_URL, "cachimbo")
+
+        assert index_store.is_indexed(VIDEO_ID, "es+en", "manual")
+
+    def test_query_con_comillas_no_crash(
+        self, cache_store: TranscriptCache, index_store: TranscriptIndex,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_search(VALID_URL, '"cachimbo" OR *')
+
+        assert payload["status"] == "completed"
