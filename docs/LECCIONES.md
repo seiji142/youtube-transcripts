@@ -19,6 +19,42 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — PAT fine-grained de otro repo: 403 hasta en LECTURAS de repo público
+
+**Tipo:** C (output inesperado — cambia el plan de verificación Fase 5)
+**Comando:** `$env:GH_TOKEN = [Environment]::GetEnvironmentVariable("GH_TOKEN","User"); gh pr list --repo seiji142/youtube-transcripts` (y `gh api repos/.../branches/main/protection`)
+**Error/Warning:** `gh: Resource not accessible by personal access token (HTTP 403)` en ambos (lectura de PRs y de protección). `gh auth status` previo: OK (`seiji142`, token `github_pat_...` válido).
+**Causa raíz:** El PAT fine-grained vigente está en *Repository access → Only select repositories* (solo portfolio): GitHub lo deja **ciego fuera de sus repos, incluso para lecturas de repos públicos**. La nota de la UI ("los PAT siempre leen repos públicos") no aplica cuando el acceso es *Only select repositories*. Evidencia: la misma lectura por API anónima sí funcionaba el 23/09 (`protected=True`).
+**Fix:** Ninguno en código — reordena la Fase 5: el **Paso 0 del usuario en el navegador** (agregar `seiji142/youtube-transcripts` al PAT + *Update token*) es prerrequisito **también para verificar lecturas**, no solo escritura. Re-ejecutar la verificación tras su confirmación.
+**Verificación:** pendiente (bloqueado en Paso 0 del usuario).
+**Lección:** Con fine-grained *Only select repositories*, el token no existe fuera de sus repos (403 en todo). El diagnóstico del playbook se amplía: *lectura OK + escritura 403 = permisos; lectura 403 en repo público = el repo no está en Repository access (o token vencido/revocado)*.
+
+---
+
+## 2026-09-25 — SyntaxError en test nuevo: `def test_overall trae_...` sin guion bajo
+
+**Tipo:** A (error duro — collection error de pytest)
+**Comando:** `.venv\Scripts\python.exe -m pytest tests/ -m "not integration" -q`
+**Error/Warning:** `E File "C:\...\tests\test_youtube_summarize.py", line 66` / `E def test_overall trae_las_mejores_oraciones(self) -> None:` / `E SyntaxError: invalid syntax` — `1 error during collection`
+**Causa raíz:** Typo al escribir el nombre del test (`test_overall trae_...` con espacio en vez de `test_overall_trae_...`). Error del autor, no del código bajo test (el módulo `youtube_summarize.py` importaba bien).
+**Fix:** Renombrar a `test_overall_trae_las_mejores_oraciones`.
+**Verificación:** suite completa en verde: `334 passed, 8 deselected` (25/09/2026).
+**Lección:** Un collection error frena toda la suite (no solo el archivo); ante `ERROR collecting`, mirar primero la línea citada — suele ser typo de sintaxis en el test nuevo, no regresión.
+
+---
+
+## 2026-09-25 — Test de timestamps asumió chunk de 1 segmento (50.0 != 5.0)
+
+**Tipo:** A (error duro — test fallido)
+**Comando:** `.venv\Scripts\python.exe -m pytest tests/ -q`
+**Error/Warning:** `E assert 50.0 == 5.0` en `tests/test_youtube_index.py:220` (`TestSearch::test_timestamps_preservados_en_resultado`) — `1 failed, 262 passed in 21.80s`
+**Causa raíz:** El test sembraba 10 segmentos de 5s (transcript total 50s ≈ 100 tokens → 1 solo chunk, por debajo de `min_tokens=500`) y esperaba `end == 5.0` (fin del primer segmento). El chunk cubre los 10 segmentos → `end == 50.0`, que es el comportamiento correcto por diseño (`start`/`end` = primer/último segmento del chunk). Expectativa del test, no bug del chunking.
+**Fix:** Ajustar la aserción a `start == 0.0` y `end == 50.0` con comentario "transcript corto → 1 chunk".
+**Verificación:** suite completa en verde: `263 passed in 20.73s` (25/09/2026).
+**Lección:** Al testear timestamps de chunks, calcular el `end` esperado según cuántos segmentos caben en el chunk (transcript corto = 1 chunk que cubre todo el rango), no asumir el fin del primer segmento.
+
+---
+
 ## 2026-09-23 — Smoke ASR: Python 3.10 deprecado para huggingface_hub
 
 **Tipo:** B (warning relevante — deprecation)
@@ -42,6 +78,42 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 **Fix:** Ninguno requerido — degradación solo de performance/espacio, no de funcionalidad. Podría desactivarse el warning con `HF_HUB_DISABLE_SYMLINKS_WARNING=1` si molesta en logs.
 **Verificación:** descarga del modelo `tiny` completada, smoke PASS, temporal limpio.
 **Lección:** En Windows sin Developer Mode, esperar cache HF plana en `~/.cache/huggingface`; no confundir con error. Para rate limits de HF en CI/uso intensivo, usar `HF_TOKEN` vía entorno, nunca hardcodear.
+
+---
+
+## 2026-09-23 — `POST /ingest` falló: body no parseable (encoding PowerShell 5.1)
+
+**Tipo:** A (WebException — exit del comando)
+**Comando:** `Invoke-RestMethod -Uri "http://127.0.0.1:8000/ingest" -ContentType "application/json"` (episodio de cierre gitflow)
+**Error/Warning:** `{"detail":"There was an error parsing the body"}`
+**Causa raíz:** el body contenía caracteres no-ASCII (ej. `"PRÓXIMA"`) y PowerShell 5.1 serializó el string sin charset UTF-8 explícito (`ContentType: application/json` sin `charset=` → encoding ANSI/cp1252) → bytes inválidos para UTF-8 → el servidor no parseó el JSON. Evidencia: el **primer** `/ingest` del día (cuerpo100% ASCII) funcionó con el mismo código.
+**Fix:** re-envío con Python stdlib `urllib` + `json.dumps` (`ensure_ascii=True` → body ASCII puro con escapes `\uXXXX`), script en temp.
+**Verificación:** `200 {"ok":true,"episode_id":"ep_320450540d3e484a899566084fbf34ca"}`.
+**Lección:** con `Invoke-RestMethod` en PS5.1, si el body trae tildes/ñ: poner `charset=utf-8` explícito o serializar desde Python. Preferido: helper Python para `/ingest` (sin sorpresas de encoding).
+
+---
+
+## 2026-09-23 — `gh api` falló por falta de autenticación
+
+**Tipo:** A (error duro — exit≠0)
+**Comando:** `gh api repos/seiji142/youtube-transcripts/branches/main/protection` (y `gh api repos/seiji142/youtube-transcripts --jq ...`; re-intento `gh auth status`)
+**Error/Warning:** `To get started with GitHub CLI, please run:  gh auth login` / `Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.` / `You are not logged into any GitHub hosts. To log in, run: gh auth login` (EXIT=1)
+**Causa raíz:** `gh` instalado pero **sin autenticar** (sin `GH_TOKEN` ni sesión de `gh auth login`). El SSH del remote autentica git push/pull, **no** la API REST — son capas distintas.
+**Fix:** lectura de estado vía API **anónima** `Invoke-RestMethod https://api.github.com/repos/seiji142/youtube-transcripts/branches/main` (repo público) → `protected=True`. Autenticación PAT documentada como **Fase 5** en `docs/gitflow-scaffold.md` (+ template `templates/gitflow-scaffold/TEMPLATE_GITFLOW_GH_PAGES.md`); pendiente de realizar.
+**Verificación:** `branch=main protected=True`, `enabled=true`, `default_branch=main`, `private=false`.
+**Lección:** SSH ≠ token de API. Para leer estado de un repo **público** basta `api.github.com` anónimo; para PRs/detalle completo de protección hace falta `gh auth` (Fase 5). No confiar en `gh` instalado = `gh` usable.
+
+---
+
+## 2026-09-23 — Tools MCP brain-ai ausentes del esquema de la sesión
+
+**Tipo:** C (output inesperado — obligó a diagnosticar y cambiar de plan)
+**Comando:** llamadas a `brain-ai_memory_save` y `brain-ai_run_tests`
+**Error/Warning:** `Model tried to call unavailable tool 'brain-ai_memory_save'. Available tools: ... (sin brain-ai)`
+**Causa raíz:** el servidor HTTP de brain-ai **está vivo** (`GET /http://localhost:8000/health` → `200 {"ok":true}`); lo que no está conectado es el **puente MCP** (`mcp_bridge.py`) en la sesión opencode actual — sus tools no aparecen en el esquema. No es caída del servicio.
+**Fix:** (1) tests → bash `.venv\Scripts\python -m pytest ...` directo (186/186, exit0); (2) memoria → API REST `POST /ingest` con el payload del cliente canónico `brain-ai-01/clients/memoria.py` (`guardar()`); (3) reconexión del bridge → reiniciar opencode (fuera del alcance de la sesión).
+**Verificación:** `PYTEST_EXIT=0`; `POST /ingest` respondió OK (episodio gitflow guardado).
+**Lección:** "tool MCP ausente del esquema" ≠ "servicio caído": verificar `/health` antes de diagnosticar. El cliente canónico documenta la API REST (`/ingest`, `/retrieve`, `/consolidate`) como fallback cuando el bridge MCP no está disponible.
 
 ---
 

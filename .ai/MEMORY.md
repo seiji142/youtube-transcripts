@@ -58,6 +58,13 @@ ANTES de generar código o tomar decisiones:
 - **preferencia:** qué le gusta al usuario (idioma, estilo, formato)
 - **lección:** qué haría diferente la próxima vez
 
+## Ejecución de tests y comandos
+
+| Situación | Herramienta | Ejemplo |
+|-----------|-------------|---------|
+| Ejecutar solo tests | `brain-ai_run_tests` + `brain-ai_test_status` | `pytest tests/ -m "not integration" -q` |
+| Verificar build / comandos consola | `brain-ai_run_command` + `brain-ai_command_status` | scripts de verificación, `pip install` (NO usar `run_tests` para esto) |
+
 ## Retrieval
 - Usar `brain-ai_memory_search(query, project="youtube-transcripts")`
 - Combina búsqueda episódica + semántica

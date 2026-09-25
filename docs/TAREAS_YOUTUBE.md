@@ -1,6 +1,9 @@
 # Tareas - Análisis de Videos YouTube (servidor MCP propio)
 Ultima actualizacion: 23/09/2026
 
+> Historial de decisiones por fase (Fases 1-2, gitflow, 3-4 abiertas):
+> **`docs/DECISIONES.md`**. Errores de shell: `docs/LECCIONES.md`.
+
 ---
 
 ## 1. Objetivo
@@ -304,28 +307,106 @@ de cuenta en nuestro flujo.
       habla" ya no se consigue por búsqueda; se documenta como
       limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
+### PRÓXIMA SESIÓN (25/09/2026) — FASE 4 CERRADA (E1-E3), v1 completo
+- [x] Fase 4 implementada y verificada (25/09): `TranscriptProvider` +
+      circuit breaker + métricas + `youtube_health` + resúmenes
+      extractivos + `youtube_transcript_summary` — **334 tests unit
+      en verde** + verificación real (`1m7fTsJzoao`); decisiones en
+      `docs/DECISIONES.md` (sección Fase 4); errores registrados en
+      `docs/LECCIONES.md` §10. **FASE 4 CERRADA** ✅ — **v1 funcional
+      completo** (Fases 1-4).
+- [ ] Pendiente no-bloqueante: guardar episodio en memoria
+      (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
+      sesión (sin tools); reintentar al reiniciar opencode.
+- [ ] Publicar (cuando decidas): **PR #1 creado 25/09**
+      (https://github.com/seiji142/youtube-transcripts/pull/1,
+      `develop → main`, 5 commits, MERGEABLE, sin mergear) vía
+      `.\scripts\gh-publish.ps1` — **escritura del PAT verificada
+      real** ✅ (Fase 5 completa). Mergear con
+      `.\scripts\gh-publish.ps1 -Merge` o en la UI. `master` legacy
+      congelada en `830914e` (borrar cuando el flujo esté validado).
+- Notas de entorno al arrancar:
+  - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
+    (sin approvals). `master` legacy congelada en `830914e`.
+  - **Tools MCP `brain-ai` caídas en la sesión 25/09 (Fase 4)** — bridge
+    desconectado: sin memoria/tests/commands; fallback pytest por bash
+    y episodio de memoria pendiente. Reiniciar opencode para
+    recuperarlas.
+  - **`gh` sin autenticar:** PRs `develop → main` manuales en la UI, o
+    seguir **Fase 5** de `docs/gitflow-scaffold.md` (PAT fine-grained).
+
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
-- [ ] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
-      con timestamps
-- [ ] Índice SQLite FTS5 (`transcript_chunks_fts`)
-- [ ] Tool `youtube_transcript_search` (`transcript_id`, `query`, `top_k`)
-- [ ] Respuestas con citas temporales
-      (`https://www.youtube.com/watch?v=ID&t=620s`)
-- [ ] Resúmenes jerárquicos para videos largos
-- [ ] Verificación: preguntar sobre un video largo y recibir fragmentos
-      citados, no la transcripción entera
+- [x] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
+      con timestamps — `services/youtube_chunking.py`
+      (`chunk_transcript`: chars/4, greedy por cues, frontera de
+      oración best-effort, overlap 12%, cues gigantes → oraciones +
+      corte duro con reparto temporal) — **30 tests**
+      (`tests/test_youtube_chunking.py`)
+- [x] Índice SQLite FTS5 (`transcript_chunks_fts`) —
+      `services/youtube_index.py`: tabla normal `transcript_chunks` +
+      FTS5 *external content*, `index_transcript` idempotente,
+      `ensure_indexed` lazy, búsqueda BM25 filtrada por `video_id`,
+      query saneada a literales `OR` — **29 tests**
+      (`tests/test_youtube_index.py`)
+- [x] Tool `youtube_transcript_search` (`url`, `query`, `top_k`) —
+      en `mcp_server.py`: valida URL, `transcript_not_found` con hint
+      si no hay transcripción, indexa on-demand, `top_k` 1..20,
+      errores estructurados sin crash — **11 tests**
+      (`tests/test_mcp_server.py`)
+- [x] Respuestas con citas temporales
+      (`https://www.youtube.com/watch?v=ID&t=620s`) — `url` por
+      resultado con `int(start)` segundos (`test_cita_usa_segundos_...`)
+- _Resúmenes jerárquicos para videos largos → **movido a Fase 4**_
+      (decisión 25/09, ver `docs/DECISIONES.md`)
+- [x] Verificación: preguntar sobre un video largo y recibir fragmentos
+      citados, no la transcripción entera — **25/09/2026, video real
+      `1m7fTsJzoao` (566s, ASR es en caché)**: 2 chunks indexados
+      (903 + 813 tokens, overlap 302.55s < 334.15s), query
+      "azulejos" → 1 chunk con cita
+      `https://www.youtube.com/watch?v=1m7fTsJzoao&t=8s`, query
+      "mermelada naranja" → chunk con `&t=8s`, ningún resultado
+      devolvió la transcripción entera (script
+      `verify_fase3_search.py`, EXIT=0)
+- [x] Suite completa en verde — **263 passed 25/09/2026**
+      (error registrado en `docs/LECCIONES.md` 25/09)
 
 ### FASE 4 — Resiliencia y operación
-- [ ] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
+- [x] Resúmenes jerárquicos para videos largos
+      (movidos desde Fase 3) — `services/youtube_summarize.py`:
+      extractivo TF-IDF sin LLM (offline), secciones temporales +
+      overall, tool `youtube_transcript_summary` con citas `&t=` —
+      **22 tests** + verificación real `1m7fTsJzoao` (3 secciones +
+      overall, EXIT=0)
+- [x] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
       `YtDlpSubtitleProvider`, `FasterWhisperProvider`,
-      `ExternalAsrProvider` opcional) con enable/disable por config
-- [ ] Circuit breaker + backoff con jitter tras 429 — **red de
+      `ExternalAsrProvider` stub deshabilitado) con enable/disable
+      por config — `services/youtube_providers.py`; servicio
+      reescrito sobre la interfaz sin cambiar su API pública —
+      **24 tests** (`tests/test_youtube_providers.py`)
+- [x] Circuit breaker + backoff con jitter tras 429 — **red de
       seguridad**, no prevención primaria (la prevención es el
-      RateLimiter de Fase 1, ver §4 incidente 429)
-- [ ] Métricas por proveedor + endpoint de salud
-- [ ] Tests de integración periódicos con videos públicos fijos
-- [ ] Cuotas por usuario, concurrencia máxima, retención documentada
-- [ ] Documentar decisión en memoria (`brain_ai_memory_save`)
+      RateLimiter de Fase 1, ver §4 incidente 429) —
+      `services/youtube_breaker.py` (umbrales 5 fallos/60s →
+      cooldown 300s ±20%; `NoCaptionsAvailable` cuenta como éxito;
+      backoff de jobs sigue determinista a propósito) + tool
+      `youtube_health` (proveedores, breakers, métricas) —
+      **33 tests** (`tests/test_youtube_breaker.py` + `TestHealthTool`)
+- [x] Métricas por proveedor + endpoint de salud — `ProviderMetrics`
+      (calls/success/empties/failures/rejected/último error) +
+      `youtube_health`; worker ASR con breaker propio compartiendo
+      métricas — verificación real: breakers `closed`
+- [x] Tests de integración periódicos con videos públicos fijos —
+      sin CI en el repo: corrida manual periódica
+      `.venv\Scripts\python -m pytest tests/test_integration.py -m integration`
+      (8 tests, skip diseñado ante bloqueo 429, ver LECCIONES 21/09)
+- [x] Cuotas por usuario, concurrencia máxima, retención documentada —
+      monousuario local: RateLimiter 1s/10-por-60s compartido
+      servicio+worker; worker 1 job a la vez; videos ≤2h;
+      caché SQLite TTL 7 días (`data/`, gitignored); sin autenticación
+      ni multiusuario en v1
+- [ ] Documentar decisión en memoria (`brain_ai_memory_save`) —
+      **bloqueado esta sesión**: bridge MCP `brain-ai` caído (sin
+      tools de memoria/tests); reintentar al reiniciar opencode
 
 ---
 
@@ -372,8 +453,10 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
       `processing`) + pipeline real (`1m7fTsJzoao` → `completed`,
       `es` prob1.00, texto coherente); ver checkbox de verificación
       §5 Fase 2 para el split de evidencias
-- [ ] Video largo → `search` devuelve chunks citados con `&t=`
-      — **Fase 3** (no aplica aún)
+- [x] Video largo → `search` devuelve chunks citados con `&t=`
+      — **Fase 3 (25/09)**: video real `1m7fTsJzoao` (566s) → 2
+      chunks (903/813 tokens) con citas `&t=8s`, sin transcripción
+      entera; ver checkbox de verificación §5 Fase 3
 - [x] Repetir mismo video usa caché (sin re-extracción)
       — tests unit + demo `data/probe.db`
 - [x] URL inválida / video privado / playlist → error claro, sin crash
@@ -383,6 +466,16 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
       huérfanos; unit tests + corrida real verificada "sin
       temporales" (23/09)
 - [x] brain-ai-01 no modificado en Fase 1
+- [x] Proveedor bloqueado repetido → breaker abre y la llamada falla
+      rápido (`provider_unavailable`); `youtube_health` refleja
+      breakers y métricas
+      — **Fase 4 (25/09)**: 5 fallos/60s → cooldown 300s ±20%;
+      tests `TestServicioConBreaker` + verificación real (breakers
+      `closed`)
+- [x] Video con transcripción → `summary` devuelve secciones +
+      overall citados con `&t=`, no la transcripción entera
+      — **Fase 4 (25/09)**: extractivo TF-IDF sin LLM; verificación
+      real `1m7fTsJzoao` (3 secciones + overall con citas)
 
 ---
 

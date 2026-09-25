@@ -70,3 +70,25 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 | `pip install -r requirements.txt` | Instalar dependencias |
 | `pytest tests/ -v` | Ejecutar tests (vía `run_tests`) |
 | `winget install Gyan.FFmpeg` | Instalar FFmpeg en Windows |
+
+## Ramas del Proyecto
+
+> Setup gitflow23/09/2026 (plantilla `templates/gitflow-scaffold`;
+> decisiones en `docs/DECISIONES.md`, checklist en `docs/gitflow-scaffold.md`).
+
+| Rama | Proposito | Sale de | Vuelve a | Proteccion |
+|------|-----------|---------|----------|------------|
+| `main` | Produccion (GitHub default) | — | — | Requiere PR, SIN "Require approvals" |
+| `develop` | Desarrollo diario (rama por defecto) | `main` | `main` (PR al publicar) | No |
+| `feature/<desc>` | Cada tarea o experimento | `develop` | `develop` (PR) | No |
+| `master` | **Legacy congelada** en `830914e` (histórico) | — | — | Se borra cuando el flujo esté validado |
+
+Reglas de comportamiento:
+- Trabajar SIEMPRE en `develop`. Antes de modificar, verificar la rama con
+  `git_ver_estado`/`git branch`; si se está en `main`, no trabajar ahí.
+- `main` solo se toca para publicar, vía PR desde `develop`.
+- Tareas grandes: `feature/<desc>` desde `develop`, merge de vuelta a `develop`.
+- Protección de `main`: "Require a pull request" SIN "Require approvals"
+  (repo personal: el autor no puede aprobar su propio PR → bloqueo permanente).
+- GitHub Pages/`deploy.yml` **NO aplica** a este repo (Python/MCP, sin build
+  estático) — decisión Q1 de `docs/DECISIONES.md`.

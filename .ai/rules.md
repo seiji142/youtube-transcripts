@@ -11,7 +11,8 @@
 - Commits frecuentes y descriptivos
 - Mensajes de commit en imperativo (ej: 'Add transcript cache', no 'Added')
 - Revisar codigo antes de merge (pull request)
-- Nunca commitear directamente a main/master
+- Trabajar en `develop` (diario) o `feature/<desc>`; `main` solo via PR
+- Nunca commitear directamente a main/master (`master` = legacy congelada)
 
 ## 3. Seguridad
 - Nunca commitear credenciales, API keys o secrets
@@ -107,6 +108,9 @@ ANTES de concluir que un servicio está caído:
 - ANTES de responder sobre decisiones/configuración/credenciales: `brain_ai_memory_search`.
 - DESPUÉS de una decisión importante: `brain_ai_memory_save`.
 - Para Git: usa exclusivamente las herramientas MCP `git_*` (ver `system.md`).
+- Excepción gitflow (23/09): si `git_subir_cambios` falla, o la operación es
+  checkout/creación de rama (no disponibles en MCP), usar **bash** como
+  alternativa (ver `docs/gitflow-scaffold.md`). Registrar fallos en §10.
 
 ## 10. REGISTRO DE ERRORES DE SHELL (obligatorio)
 
