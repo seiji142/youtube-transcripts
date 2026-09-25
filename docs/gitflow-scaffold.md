@@ -73,10 +73,11 @@ git status      # working tree limpio
 
 ### Fase 5 — Autenticar `gh` con token (opcional, para PRs vía CLI)
 
-> **Estado en este proyecto (25/09/2026): lista.** Paso 0 del usuario
+> **Estado en este proyecto (25/09/2026): completa.** Paso 0 del usuario
 > hecho (PAT con `seiji142/youtube-transcripts` + Contents/PRs RW):
-> `gh auth status` OK, `gh pr list` exit 0. Escritura real pendiente
-> del primer PR (`.\scripts\gh-publish.ps1 -Merge` al publicar).
+> `gh auth status` OK, `gh pr list` exit 0 y **PR #1 creado real**
+> (`develop → main`, 5 commits, MERGEABLE, sin mergear) — escritura
+> verificada. Merge pendiente de decisión de publicar.
 > Playbook validado: `templates/gitflow-scaffold/CONFIG_API_TOKEN_PASO_A_PASO.md`
 > (25/09/2026, proyecto portfolio).
 

@@ -318,17 +318,13 @@ de cuenta en nuestro flujo.
 - [ ] Pendiente no-bloqueante: guardar episodio en memoria
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
-- [ ] Publicar (cuando decidas): PR `develop → main` manual en la UI
-      (main exige PR, sin approvals) o **Fase 5 lista** (25/09):
-      `scripts/gh-publish.ps1` copiado del template (sin Pages);
-      Paso 0 del usuario hecho (PAT con los 3 repos, Contents+PRs
-      RW): `gh auth status` OK + `gh pr list` exit 0. Detalle de
-      protección vía CLI queda en 403 a propósito (exige
-      Administration read, omitido por mínimo privilegio; ya
-      verificado anónimo + UI el 23/09). Publicar con
-      `.\scripts\gh-publish.ps1 -Merge` (primera prueba real de
-      escritura). `master` legacy congelada en `830914e` (borrar
-      cuando el flujo esté validado).
+- [ ] Publicar (cuando decidas): **PR #1 creado 25/09**
+      (https://github.com/seiji142/youtube-transcripts/pull/1,
+      `develop → main`, 5 commits, MERGEABLE, sin mergear) vía
+      `.\scripts\gh-publish.ps1` — **escritura del PAT verificada
+      real** ✅ (Fase 5 completa). Mergear con
+      `.\scripts\gh-publish.ps1 -Merge` o en la UI. `master` legacy
+      congelada en `830914e` (borrar cuando el flujo esté validado).
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
     (sin approvals). `master` legacy congelada en `830914e`.
