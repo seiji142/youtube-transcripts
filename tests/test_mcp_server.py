@@ -10,10 +10,12 @@ import pytest
 import mcp_server
 from mcp_server import (
     mcp,
+    youtube_health,
     youtube_transcript,
     youtube_transcript_read,
     youtube_transcript_search,
     youtube_transcript_status,
+    youtube_transcript_summary,
 )
 from services.youtube_cache import TranscriptCache
 from services.youtube_errors import InvalidYouTubeUrl, NoCaptionsAvailable
@@ -449,3 +451,114 @@ class TestSearchTool:
         payload = youtube_transcript_search(VALID_URL, '"cachimbo" OR *')
 
         assert payload["status"] == "completed"
+
+
+class TestHealthTool:
+    def test_herramienta_registrada(self) -> None:
+        async def _names() -> list[str]:
+            tools = await mcp.list_tools()
+            return [t.name for t in tools]
+
+        names = asyncio.run(_names())
+        assert "youtube_health" in names
+
+    def test_devuelve_proveedores_con_breaker_y_metricas(self) -> None:
+        payload = youtube_health()
+
+        assert payload["status"] == "completed"
+        names = [p["name"] for p in payload["providers"]]
+        assert "youtube_captions" in names
+        assert "yt_dlp_subtitles" in names
+        for provider in payload["providers"]:
+            assert provider["enabled"] is True
+            assert provider["breaker"] == "closed"
+            for key in ("calls", "success", "empties", "failures",
+                        "rejected", "last_error", "last_latency_s"):
+                assert key in provider
+
+    def test_incluye_breaker_del_worker(self) -> None:
+        payload = youtube_health()
+
+        assert payload["worker"]["name"] == "faster_whisper"
+        assert payload["worker"]["breaker"] == "closed"
+
+
+class TestSummaryTool:
+    SEGMENTS = [
+        {"start": 0.0, "end": 10.0, "text": "El motor cachimbo es muy rápido."},
+        {"start": 10.0, "end": 20.0, "text": "Hablamos del clima soleado."},
+        {"start": 20.0, "end": 30.0, "text": "El motor cachimbo rinde bien."},
+    ]
+
+    def _seed(self, cache: TranscriptCache) -> None:
+        cache.set(
+            VIDEO_ID, "es+en", "manual",
+            segments=self.SEGMENTS,
+            language_code="es", source="youtube_captions",
+        )
+
+    def test_herramienta_registrada(self) -> None:
+        async def _names() -> list[str]:
+            tools = await mcp.list_tools()
+            return [t.name for t in tools]
+
+        names = asyncio.run(_names())
+        assert "youtube_transcript_summary" in names
+
+    def test_sin_transcripcion_da_transcript_not_found(
+        self, cache_store: TranscriptCache,
+    ) -> None:
+        payload = youtube_transcript_summary(VALID_URL)
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "transcript_not_found"
+
+    def test_url_invalida_da_invalid_url(
+        self, cache_store: TranscriptCache,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_summary("https://evil.com/watch?v=x")
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "invalid_url"
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"max_sections": 0},
+            {"max_sections": 11},
+            {"sentences_per_section": 0},
+            {"sentences_per_section": 6},
+        ],
+    )
+    def test_parametros_invalidos(
+        self, cache_store: TranscriptCache, kwargs: dict[str, Any],
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_summary(VALID_URL, **kwargs)
+
+        assert payload["status"] == "error"
+        assert payload["code"] == "invalid_request"
+
+    def test_resumen_con_secciones_y_citas(
+        self, cache_store: TranscriptCache,
+    ) -> None:
+        self._seed(cache_store)
+
+        payload = youtube_transcript_summary(
+            VALID_URL, max_sections=2, sentences_per_section=1,
+        )
+
+        assert payload["status"] == "completed"
+        assert payload["video_id"] == VIDEO_ID
+        assert payload["section_count"] >= 1
+        for section in payload["sections"]:
+            for sentence in section["sentences"]:
+                assert sentence["url"].startswith(
+                    f"https://www.youtube.com/watch?v={VIDEO_ID}&t=",
+                )
+                assert sentence["url"].endswith("s")
+        assert len(payload["overall"]) == 1
+        assert "cachimbo" in payload["overall"][0]["text"]

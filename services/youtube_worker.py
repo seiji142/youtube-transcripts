@@ -25,8 +25,14 @@ from typing import Any, Callable
 
 from services.youtube_asr import FasterWhisperTranscriber
 from services.youtube_audio import TEMP_PREFIX, YtDlpAudioDownloader
+from services.youtube_breaker import CircuitBreaker, ProviderMetrics
 from services.youtube_cache import TranscriptCache
-from services.youtube_errors import AsrFailed, DurationExceeded, TranscriptError
+from services.youtube_errors import (
+    AsrFailed,
+    DurationExceeded,
+    TranscriptError,
+    VideoBlockedOrUnavailable,
+)
 from services.youtube_jobs import JobStore
 from services.youtube_rate_limit import RateLimiter
 from services.youtube_service import MAX_DURATION_SECONDS
@@ -81,6 +87,8 @@ class AsrWorker:
         rate_limiter: RateLimiter | None = None,
         max_duration_seconds: int = MAX_DURATION_SECONDS,
         clock: Callable[[], datetime] | None = None,
+        breaker: CircuitBreaker | None = None,
+        metrics: ProviderMetrics | None = None,
     ) -> None:
         self.jobs = jobs
         self.cache = cache
@@ -89,6 +97,10 @@ class AsrWorker:
         self.rate_limiter = rate_limiter
         self.max_duration_seconds = max_duration_seconds
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        # Resiliencia (Fase 4, E2): opcionales; sin ellos el worker
+        # conserva el comportamiento de Fase 2.
+        self.breaker = breaker
+        self.metrics = metrics
 
     def run_once(self) -> dict[str, Any] | None:
         """Recupera jobs zombies, procesa a lo sumo uno y devuelve su estado.
@@ -142,6 +154,34 @@ class AsrWorker:
         if self.rate_limiter is not None:
             self.rate_limiter.acquire()
 
+        # Breaker (Fase 4, E2): fail fast reintentable si el ASR está caído.
+        if self.breaker is not None and not self.breaker.allow():
+            raise VideoBlockedOrUnavailable(
+                "ASR local temporalmente deshabilitado (circuit breaker abierto)",
+                video_id=video_id,
+                suggestion="El job se reintenta cuando cierre el cooldown",
+            )
+
+        started = time.monotonic()
+        try:
+            self._transcribe_job(job, job_id, video_id)
+        except TranscriptError as exc:
+            if self.breaker is not None:
+                self.breaker.record_failure()
+            if self.metrics is not None:
+                self.metrics.record(
+                    "faster_whisper", "failure", time.monotonic() - started,
+                    error_code=exc.code,
+                )
+            raise
+        if self.breaker is not None:
+            self.breaker.record_success()
+        if self.metrics is not None:
+            self.metrics.record(
+                "faster_whisper", "success", time.monotonic() - started,
+            )
+
+    def _transcribe_job(self, job: dict[str, Any], job_id: str, video_id: str) -> None:
         self.jobs.heartbeat(job_id, now=self._clock(), stage="downloading")
         audio = self.downloader.download(video_id)
         try:

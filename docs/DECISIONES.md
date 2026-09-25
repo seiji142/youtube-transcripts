@@ -78,10 +78,22 @@ con video `1m7fTsJzoao` (566s): 2 chunks (903/813 tokens), queries
 "azulejos"/"mermelada naranja" → fragmentos con cita `&t=8s`, nunca la
 transcripción entera (script `verify_fase3_search.py`, EXIT=0).
 
-## FASE 4 — Resiliencia y operación (prevista, sin decidir)
+## FASE 4 — Resiliencia y operación (25/09/2026)
 
-- _Interfaz `TranscriptProvider`_ con enable/disable por config.
-- _Circuit breaker + backoff con jitter_ tras429 — red de seguridad, no prevención (esa es el RateLimiter de Fase1).
-- _Métricas por proveedor + endpoint de salud_; cuotas, concurrencia, retención.
-- _Resúmenes jerárquicos_ para videos largos (movidos desde Fase 3, decisión 25/09).
-- _Decisiones pendientes:_ umbrales del breaker; si ASR externo opcional entra en v1.
+| Decisión | Por qué | Evidencia |
+|----------|---------|-----------|
+| **E1: interfaz `TranscriptProvider` + servicio reescrito sin cambiar su API** | Criterio del plan (enable/disable por config); `TranscriptSegment` movido a `youtube_providers` (re-exportado por compat); el servicio conserva kwargs y privados que usan los tests (`_api`, `_subtitles`, `_enable_subtitle_fallback`) | `services/youtube_providers.py`; `tests/test_youtube_providers.py` (24 tests); suite sin regresiones |
+| **E1: ASR fuera del pipeline síncrono** (`default_providers` = captions → subtítulos) | Un `get_transcript` nunca debe bloquear minutos en ASR; la vía async sigue siendo el worker durable con jobs | `default_providers()`; decisión registrada en docstring del módulo |
+| **E1: `FasterWhisperProvider` existe pero el worker no lo usa** | El worker necesita heartbeats/etapas (`downloading`/`transcribing`) que el provider no modela; duplicación aceptada y documentada; el worker sigue testeado con sus fakes | `services/youtube_worker.py` intacto en E1; tests 13/13 |
+| **E2: umbrales del breaker 5 fallos/60s → cooldown 300s ±20% jitter** | Resuelve "umbrales" pendiente: 5 evita falsos positivos de un 429 aislado; 300s da aire a YouTube; jitter evita reintentos en manada | `services/youtube_breaker.py` (defaults + tests de transición/jitter) |
+| **E2: `NoCaptionsAvailable` cuenta como éxito del breaker** | "Vacío" prueba que el proveedor responde; solo errores de bloqueo/transporte deben abrir el circuito | `CircuitBreaker.call` + test dedicado |
+| **E2: backoff de `JobStore` sigue determinista** | Sus tests fijan valores exactos (`30s*2^n`); el jitter vive en el cooldown del breaker (código nuevo, tests nuevos) | Decisión explícita; tests de jobs intactos |
+ | **E2: breaker abierto salta al siguiente proveedor; si todos caen → `ProviderUnavailable`** | Degradación por proveedor (un bloqueo de captions no mata subtítulos); nuevo código con `to_dict()` para MCP | Tests `TestServicioConBreaker`; tool `youtube_health` |
+| **E2: worker con breaker/métricas opcionales (`None` = Fase 2)** | Compatibilidad total con tests existentes; fail fast del worker es reintentable (`blocked` no es terminal) | Params opcionales + 4 tests worker |
+| **E3: resúmenes extractivos TF-IDF, sin LLM** | v1 100% offline: sin dependencias ni API keys; TF-IDF (no TF puro) para que el relleno repetido no gane a lo específico | `services/youtube_summarize.py`; tool `youtube_transcript_summary`; 22 tests |
+| **ASR externo: stub deshabilitado, fuera del v1 funcional** | Resuelve "si entra en v1": no — interfaz lista (`ExternalAsrProvider`), sin credenciales ni dependencia | `ExternalAsrProvider(enabled=False)` + tests |
+| **Métricas en memoria (no en SQLite)** | Volátiles por diseño: diagnóstico operativo, no histórico; `snapshot()` para `youtube_health` | `ProviderMetrics` + `TestMetrics` |
+
+Evidencia global: **334 tests unit en verde** (25/09/2026) + verificación
+real `1m7fTsJzoao`: summary 3 secciones + overall con citas `&t=` y
+health con breakers `closed` (scripts `verify_fase4_*`, EXIT=0).

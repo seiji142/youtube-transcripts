@@ -69,3 +69,9 @@ class AsrFailed(TranscriptError):
     """Fallo en la transcripción local (faster-whisper)."""
 
     code = "asr_failed"
+
+
+class ProviderUnavailable(TranscriptError):
+    """Circuit breaker abierto: el proveedor falló demasiado (Fase 4, E2)."""
+
+    code = "provider_unavailable"

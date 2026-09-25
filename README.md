@@ -6,23 +6,26 @@ servidor MCP propio que expone transcripción con timestamps.
 
 ## Estado
 
-**Fases 1, 2 y 3 completas**: captions + subtítulos yt-dlp, audio
-+FFmpeg, ASR local faster-whisper (verificado real: `es` prob 1.00),
-jobs async con worker durable, tools `status`/`read`; **RAG FTS5**
-(chunking 500-1000 tokens + overlap 12% + tool `search` con citas
-`&t=`). Suite **263/263** y verificación real de `search` **PASS**
-(25/09, ver `docs/LECCIONES.md`).
+**Fases 1, 2, 3 y 4 completas (v1 funcional)**: captions + subtítulos
+yt-dlp, audio +FFmpeg, ASR local faster-whisper (verificado real:
+`es` prob 1.00), jobs async con worker durable, tools
+`status`/`read`; **RAG FTS5** (chunking 500-1000 tokens + overlap 12%
++ tool `search` con citas `&t=`); **resiliencia** (interfaz
+`TranscriptProvider`, circuit breaker 5/60s→300s±20% + métricas +
+tool `health`) y **resúmenes extractivos** (TF-IDF + tool `summary`
+con citas). Suite **334 unit + 8 integración**; verificaciones reales
+**PASS** (25/09, ver `docs/LECCIONES.md`).
 
-Siguiente: **Fase 4** (resiliencia + resúmenes jerárquicos). Ver
-`docs/TAREAS_YOUTUBE.md`.
+Siguiente: **publicar** (PR `develop → main` en la UI) u opcional
+Fase 5 (`gh` + PAT). Ver `docs/TAREAS_YOUTUBE.md`.
 
 ## Estructura
 
 | Ruta | Contenido |
 |------|-----------|
-| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles`, `youtube_audio`, `youtube_asr`, `youtube_jobs`, `youtube_worker`, `youtube_chunking`, `youtube_index` |
-| `mcp_server.py` | Servidor MCP propio (`youtube_transcript`, `_status`, `_read`, `_search`) + thread worker ASR |
-| `tests/` | 255 unit + 8 integración (marcador `integration`) |
+| `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles`, `youtube_audio`, `youtube_asr`, `youtube_jobs`, `youtube_worker`, `youtube_chunking`, `youtube_index`, `youtube_providers`, `youtube_breaker`, `youtube_summarize` |
+| `mcp_server.py` | Servidor MCP propio (`youtube_transcript`, `_status`, `_read`, `_search`, `health`, `_summary`) + thread worker ASR |
+| `tests/` | 334 unit + 8 integración (marcador `integration`) |
 | `data/` | SQLite local (caché + jobs + índice FTS5, gitignored) |
 | `docs/TAREAS_YOUTUBE.md` | Plan, fases, decisiones, criterios de aceptación |
 | `docs/investigacion-youtube/` | 4 docs de investigación externa |
@@ -37,7 +40,9 @@ youtube-transcript-api (captions)   ← Fase 1 ✅
   → yt-dlp subtítulos                ← Fase 2 ✅ (fallback implementado)
     → yt-dlp audio + faster-whisper  ← Fase 2 ✅ (worker async, verificado real)
       → SQLite caché ✅ + jobs ✅ + FTS5 ✅ (índice de chunks, lazy)
-        → tools MCP: transcript ✅ / status ✅ / read ✅ / search ✅
+        → tools MCP: transcript ✅ / status ✅ / read ✅ / search ✅ /
+                       health ✅ (breakers+métricas) / summary ✅ (extractivo)
+      → Fase 4 ✅: providers + circuit breaker + resúmenes
 ```
 
 ## Integración

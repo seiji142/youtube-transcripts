@@ -1,6 +1,6 @@
 """Servidor MCP propio de youtube-transcripts.
 
-Tools (Fase 2+3):
+Tools (Fase 2+3+4):
 - ``youtube_transcript`` — extracción síncrona (captions → subtítulos);
   sin captions encola un job ASR y responde ``processing`` (D1).
 - ``youtube_transcript_status`` — estado de un job ASR.
@@ -8,6 +8,9 @@ Tools (Fase 2+3):
   (D3: ``start``/``end`` en segundos + ``max_chars`` como tope).
 - ``youtube_transcript_search`` — búsqueda FTS5 sobre chunks del video
   con citas temporales ``&t=`` (Fase 3).
+- ``youtube_health`` — salud: proveedores, breakers y métricas (Fase 4).
+- ``youtube_transcript_summary`` — resumen jerárquico extractivo con
+  citas ``&t=`` (Fase 4).
 
 Al arrancar (``main``) lanza el worker ASR como thread daemon en el
 mismo proceso (decisión D1). Independiente de brain-ai-01. stdio.
@@ -21,11 +24,17 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
+from services.youtube_breaker import CircuitBreaker
 from services.youtube_cache import TranscriptCache
 from services.youtube_errors import NoCaptionsAvailable, TranscriptError
 from services.youtube_index import MAX_TOP_K, TranscriptIndex
 from services.youtube_jobs import JobStore
 from services.youtube_service import YouTubeService
+from services.youtube_summarize import (
+    MAX_SECTIONS_LIMIT,
+    MAX_SENTENCES_LIMIT,
+    summarize_transcript,
+)
 from services.youtube_urls import extract_video_id
 from services.youtube_worker import AsrWorker
 
@@ -45,6 +54,8 @@ _worker = AsrWorker(
     jobs=_jobs,
     cache=_cache,
     rate_limiter=_service.rate_limiter,
+    breaker=CircuitBreaker("faster_whisper"),
+    metrics=_service.metrics,
 )
 
 _CLIENT_STATUS = {
@@ -374,6 +385,148 @@ def youtube_transcript_search(
                 ),
             }
             for rank, row in enumerate(results, start=1)
+        ],
+    }
+
+
+@mcp.tool(
+    name="youtube_health",
+    description=(
+        "Salud del servidor: proveedores (habilitado/breaker/métricas "
+        "de llamadas, éxitos, fallos y último error) y breaker del "
+        "worker ASR. Sin parámetros."
+    ),
+)
+def youtube_health() -> dict[str, Any]:
+    """Devuelve el estado de proveedores, breakers y métricas."""
+    stats = _service.metrics.snapshot()
+    providers = []
+    for provider in _service.providers:
+        breaker = _service.breakers.get(provider.name)
+        providers.append({
+            "name": provider.name,
+            "enabled": provider.enabled,
+            "breaker": breaker.state if breaker is not None else "disabled",
+            **stats.get(provider.name, {
+                "calls": 0, "success": 0, "empties": 0, "failures": 0,
+                "rejected": 0, "last_error": None, "last_latency_s": 0.0,
+            }),
+        })
+    payload: dict[str, Any] = {
+        "status": "completed",
+        "providers": providers,
+    }
+    if _worker.breaker is not None:
+        payload["worker"] = {
+            "name": _worker.breaker.name,
+            "breaker": _worker.breaker.state,
+            **stats.get(_worker.breaker.name, {
+                "calls": 0, "success": 0, "empties": 0, "failures": 0,
+                "rejected": 0, "last_error": None, "last_latency_s": 0.0,
+            }),
+        }
+    return payload
+
+
+@mcp.tool(
+    name="youtube_transcript_summary",
+    description=(
+        "Resumen jerárquico extractivo (sin LLM) de un video ya "
+        "transcripto: secciones temporales con las oraciones más "
+        "representativas + overall del video, cada oración con cita "
+        "https://www.youtube.com/watch?v=ID&t=620s. Requiere "
+        "transcripción previa (si no, llamar antes youtube_transcript)."
+    ),
+)
+def youtube_transcript_summary(
+    url: str,
+    max_sections: int = 5,
+    sentences_per_section: int = 2,
+) -> dict[str, Any]:
+    """Devuelve el resumen por secciones y el overall, con citas.
+
+    Args:
+        url: URL pública del video (misma validación que youtube_transcript).
+        max_sections: Nº máximo de secciones (1..10).
+        sentences_per_section: Oraciones por sección y overall (1..5).
+    """
+    if not 1 <= max_sections <= MAX_SECTIONS_LIMIT:
+        return {
+            "status": "error",
+            "code": "invalid_request",
+            "message": f"max_sections debe estar en [1, {MAX_SECTIONS_LIMIT}]",
+        }
+    if not 1 <= sentences_per_section <= MAX_SENTENCES_LIMIT:
+        return {
+            "status": "error",
+            "code": "invalid_request",
+            "message": (
+                "sentences_per_section debe estar en "
+                f"[1, {MAX_SENTENCES_LIMIT}]"
+            ),
+        }
+
+    try:
+        video_id = extract_video_id(url)
+    except TranscriptError as exc:
+        return exc.to_dict()
+
+    entry = _cache.get_any(video_id)
+    if entry is None:
+        return {
+            "status": "error",
+            "code": "transcript_not_found",
+            "message": "No hay transcripción para ese video",
+            "video_id": video_id,
+            "hint": "Primero llamar youtube_transcript para extraerla",
+        }
+
+    try:
+        summary = summarize_transcript(
+            entry["segments"],
+            max_sections=max_sections,
+            sentences_per_section=sentences_per_section,
+        )
+    except Exception as exc:  # noqa: BLE001 — nunca crashear el servidor
+        return {
+            "status": "error",
+            "code": "summarize_error",
+            "message": f"Error al resumir: {exc}",
+            "video_id": video_id,
+        }
+
+    def _cite(start: float) -> str:
+        return f"https://www.youtube.com/watch?v={video_id}&t={int(start)}s"
+
+    return {
+        "status": "completed",
+        "video_id": video_id,
+        "max_sections": max_sections,
+        "sentences_per_section": sentences_per_section,
+        "section_count": len(summary.sections),
+        "sections": [
+            {
+                "index": section.index,
+                "start": section.start,
+                "end": section.end,
+                "sentences": [
+                    {
+                        "text": sentence.text,
+                        "start": sentence.start,
+                        "url": _cite(sentence.start),
+                    }
+                    for sentence in section.sentences
+                ],
+            }
+            for section in summary.sections
+        ],
+        "overall": [
+            {
+                "text": sentence.text,
+                "start": sentence.start,
+                "url": _cite(sentence.start),
+            }
+            for sentence in summary.overall
         ],
     }
 

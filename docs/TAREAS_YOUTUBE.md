@@ -307,20 +307,28 @@ de cuenta en nuestro flujo.
       habla" ya no se consigue por búsqueda; se documenta como
       limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
-### PRÓXIMA SESIÓN (25/09/2026) — FASE 3 CERRADA, arrancar FASE 4
-- [x] Fase 3 implementada y verificada (25/09): chunking + FTS5 + tool
-      `youtube_transcript_search` con citas `&t=` — **263 tests en
-      verde** + verificación real con video `1m7fTsJzoao` (566s);
-      decisiones en `docs/DECISIONES.md` (sección Fase 3); error de
-      test registrado en `docs/LECCIONES.md` §10. **FASE 3 CERRADA** ✅
-- [ ] Arrancar Fase 4 (ver §5): `TranscriptProvider`, circuit
-      breaker, métricas; **resúmenes jerárquicos** (movidos desde
-      Fase 3) según alcance acordado.
+### PRÓXIMA SESIÓN (25/09/2026) — FASE 4 CERRADA (E1-E3), v1 completo
+- [x] Fase 4 implementada y verificada (25/09): `TranscriptProvider` +
+      circuit breaker + métricas + `youtube_health` + resúmenes
+      extractivos + `youtube_transcript_summary` — **334 tests unit
+      en verde** + verificación real (`1m7fTsJzoao`); decisiones en
+      `docs/DECISIONES.md` (sección Fase 4); errores registrados en
+      `docs/LECCIONES.md` §10. **FASE 4 CERRADA** ✅ — **v1 funcional
+      completo** (Fases 1-4).
+- [ ] Pendiente no-bloqueante: guardar episodio en memoria
+      (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
+      sesión (sin tools); reintentar al reiniciar opencode.
+- [ ] Publicar (cuando decidas): PR `develop → main` manual en la UI
+      (main exige PR, sin approvals) o Fase 5 (`gh` + PAT) para PRs
+      vía CLI. `master` legacy congelada en `830914e` (borrar cuando
+      el flujo esté validado).
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
     (sin approvals). `master` legacy congelada en `830914e`.
-  - **Tools MCP `brain-ai` activas** en la sesión 25/09 (memoria/tests
-    OK tras reinicio de opencode).
+  - **Tools MCP `brain-ai` caídas en la sesión 25/09 (Fase 4)** — bridge
+    desconectado: sin memoria/tests/commands; fallback pytest por bash
+    y episodio de memoria pendiente. Reiniciar opencode para
+    recuperarlas.
   - **`gh` sin autenticar:** PRs `develop → main` manuales en la UI, o
     seguir **Fase 5** de `docs/gitflow-scaffold.md` (PAT fine-grained).
 
@@ -360,18 +368,42 @@ de cuenta en nuestro flujo.
       (error registrado en `docs/LECCIONES.md` 25/09)
 
 ### FASE 4 — Resiliencia y operación
-- [ ] Resúmenes jerárquicos para videos largos
-      (movidos desde Fase 3 — decisión 25/09)
-- [ ] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
+- [x] Resúmenes jerárquicos para videos largos
+      (movidos desde Fase 3) — `services/youtube_summarize.py`:
+      extractivo TF-IDF sin LLM (offline), secciones temporales +
+      overall, tool `youtube_transcript_summary` con citas `&t=` —
+      **22 tests** + verificación real `1m7fTsJzoao` (3 secciones +
+      overall, EXIT=0)
+- [x] Interfaz `TranscriptProvider` (`YouTubeTranscriptApiProvider`,
       `YtDlpSubtitleProvider`, `FasterWhisperProvider`,
-      `ExternalAsrProvider` opcional) con enable/disable por config
-- [ ] Circuit breaker + backoff con jitter tras 429 — **red de
+      `ExternalAsrProvider` stub deshabilitado) con enable/disable
+      por config — `services/youtube_providers.py`; servicio
+      reescrito sobre la interfaz sin cambiar su API pública —
+      **24 tests** (`tests/test_youtube_providers.py`)
+- [x] Circuit breaker + backoff con jitter tras 429 — **red de
       seguridad**, no prevención primaria (la prevención es el
-      RateLimiter de Fase 1, ver §4 incidente 429)
-- [ ] Métricas por proveedor + endpoint de salud
-- [ ] Tests de integración periódicos con videos públicos fijos
-- [ ] Cuotas por usuario, concurrencia máxima, retención documentada
-- [ ] Documentar decisión en memoria (`brain_ai_memory_save`)
+      RateLimiter de Fase 1, ver §4 incidente 429) —
+      `services/youtube_breaker.py` (umbrales 5 fallos/60s →
+      cooldown 300s ±20%; `NoCaptionsAvailable` cuenta como éxito;
+      backoff de jobs sigue determinista a propósito) + tool
+      `youtube_health` (proveedores, breakers, métricas) —
+      **33 tests** (`tests/test_youtube_breaker.py` + `TestHealthTool`)
+- [x] Métricas por proveedor + endpoint de salud — `ProviderMetrics`
+      (calls/success/empties/failures/rejected/último error) +
+      `youtube_health`; worker ASR con breaker propio compartiendo
+      métricas — verificación real: breakers `closed`
+- [x] Tests de integración periódicos con videos públicos fijos —
+      sin CI en el repo: corrida manual periódica
+      `.venv\Scripts\python -m pytest tests/test_integration.py -m integration`
+      (8 tests, skip diseñado ante bloqueo 429, ver LECCIONES 21/09)
+- [x] Cuotas por usuario, concurrencia máxima, retención documentada —
+      monousuario local: RateLimiter 1s/10-por-60s compartido
+      servicio+worker; worker 1 job a la vez; videos ≤2h;
+      caché SQLite TTL 7 días (`data/`, gitignored); sin autenticación
+      ni multiusuario en v1
+- [ ] Documentar decisión en memoria (`brain_ai_memory_save`) —
+      **bloqueado esta sesión**: bridge MCP `brain-ai` caído (sin
+      tools de memoria/tests); reintentar al reiniciar opencode
 
 ---
 
@@ -431,6 +463,16 @@ Fijar versiones en `requirements.txt` tras validar con el Python local
       huérfanos; unit tests + corrida real verificada "sin
       temporales" (23/09)
 - [x] brain-ai-01 no modificado en Fase 1
+- [x] Proveedor bloqueado repetido → breaker abre y la llamada falla
+      rápido (`provider_unavailable`); `youtube_health` refleja
+      breakers y métricas
+      — **Fase 4 (25/09)**: 5 fallos/60s → cooldown 300s ±20%;
+      tests `TestServicioConBreaker` + verificación real (breakers
+      `closed`)
+- [x] Video con transcripción → `summary` devuelve secciones +
+      overall citados con `&t=`, no la transcripción entera
+      — **Fase 4 (25/09)**: extractivo TF-IDF sin LLM; verificación
+      real `1m7fTsJzoao` (3 secciones + overall con citas)
 
 ---
 

@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — SyntaxError en test nuevo: `def test_overall trae_...` sin guion bajo
+
+**Tipo:** A (error duro — collection error de pytest)
+**Comando:** `.venv\Scripts\python.exe -m pytest tests/ -m "not integration" -q`
+**Error/Warning:** `E File "C:\...\tests\test_youtube_summarize.py", line 66` / `E def test_overall trae_las_mejores_oraciones(self) -> None:` / `E SyntaxError: invalid syntax` — `1 error during collection`
+**Causa raíz:** Typo al escribir el nombre del test (`test_overall trae_...` con espacio en vez de `test_overall_trae_...`). Error del autor, no del código bajo test (el módulo `youtube_summarize.py` importaba bien).
+**Fix:** Renombrar a `test_overall_trae_las_mejores_oraciones`.
+**Verificación:** suite completa en verde: `334 passed, 8 deselected` (25/09/2026).
+**Lección:** Un collection error frena toda la suite (no solo el archivo); ante `ERROR collecting`, mirar primero la línea citada — suele ser typo de sintaxis en el test nuevo, no regresión.
+
+---
+
 ## 2026-09-25 — Test de timestamps asumió chunk de 1 segmento (50.0 != 5.0)
 
 **Tipo:** A (error duro — test fallido)

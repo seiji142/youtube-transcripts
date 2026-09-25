@@ -1,51 +1,54 @@
 """Orquestador de transcripciones de YouTube.
 
-Pipeline: URL validada → caché → youtube-transcript-api (captions)
-→ yt-dlp (subtítulos, Fase 2) → NoCaptionsAvailable (ASR: Fase 2+).
+Pipeline: URL validada → caché → proveedores en orden
+(``YouTubeTranscriptApiProvider`` → ``YtDlpSubtitleProvider``; el
+primero que tenga éxito gana — Fase 4, E1). Sin material en ningún
+proveedor: ``NoCaptionsAvailable`` (la capa MCP encola ASR).
 Selección de pistas: manual > automática, idioma pedido > original.
 Límite de duración 2h.
 """
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from youtube_transcript_api import (
-    AgeRestricted,
-    InvalidVideoId,
-    IpBlocked,
-    NoTranscriptFound,
-    RequestBlocked,
-    TranscriptList,
-    TranscriptsDisabled,
-    VideoUnavailable,
-    VideoUnplayable,
-    YouTubeTranscriptApi,
-    YouTubeTranscriptApiException,
-)
+from youtube_transcript_api import YouTubeTranscriptApi
 
+from services.youtube_breaker import CircuitBreaker, ProviderMetrics
 from services.youtube_cache import TranscriptCache
 from services.youtube_errors import (
     DurationExceeded,
     NoCaptionsAvailable,
+    ProviderUnavailable,
     TranscriptError,
-    VideoBlockedOrUnavailable,
+)
+from services.youtube_providers import (
+    ProviderResult,
+    TranscriptProvider,
+    TranscriptSegment,
+    _map_library_error,
+    _select_track,
+    default_providers,
 )
 from services.youtube_rate_limit import RateLimiter
-from services.youtube_subtitles import SubtitleResult, YtDlpSubtitles
+from services.youtube_subtitles import YtDlpSubtitles
 from services.youtube_urls import extract_video_id
 
 MAX_DURATION_SECONDS = 7200  # 2 horas
 DEFAULT_LANGUAGES = ("es", "en")
 
-
-@dataclass
-class TranscriptSegment:
-    """Segmento con timestamps normalizados."""
-
-    start: float
-    end: float
-    text: str
+__all__ = [
+    "TranscriptSegment",
+    "TranscriptResult",
+    "YouTubeService",
+    "MAX_DURATION_SECONDS",
+    "DEFAULT_LANGUAGES",
+    "ProviderResult",
+    "TranscriptProvider",
+    "_map_library_error",
+    "_select_track",
+]
 
 
 @dataclass
@@ -83,78 +86,8 @@ class TranscriptResult:
         return payload
 
 
-def _map_library_error(exc: Exception, video_id: str) -> TranscriptError:
-    """Convierte excepciones de youtube-transcript-api en errores del dominio."""
-    if isinstance(exc, (RequestBlocked, IpBlocked)):
-        return VideoBlockedOrUnavailable(
-            "YouTube bloqueó la solicitud (rate limit o IP)",
-            video_id=video_id,
-            suggestion="Reintentar más tarde; revisar circuit breaker (Fase 4)",
-        )
-    if isinstance(exc, (VideoUnavailable, InvalidVideoId, VideoUnplayable, AgeRestricted)):
-        return VideoBlockedOrUnavailable(
-            f"Video no disponible: {exc}",
-            video_id=video_id,
-            suggestion="Verificar que la URL corresponde a un video público",
-        )
-    if isinstance(exc, TranscriptsDisabled):
-        return NoCaptionsAvailable(
-            "El creador deshabilitó los captions para este video",
-            video_id=video_id,
-            suggestion="Sin captions: ASR local disponible en Fase 2",
-        )
-    if isinstance(exc, NoTranscriptFound):
-        return NoCaptionsAvailable(
-            "No hay captions en los idiomas solicitados",
-            video_id=video_id,
-            suggestion="Probar otros idiomas o usar ASR (Fase 2)",
-        )
-    if isinstance(exc, YouTubeTranscriptApiException):
-        return VideoBlockedOrUnavailable(
-            f"Error de YouTube: {exc}",
-            video_id=video_id,
-        )
-    return TranscriptError(f"Error inesperado: {exc}", video_id=video_id)
-
-
-def _select_track(
-    transcript_list: TranscriptList,
-    languages: tuple[str, ...] | list[str],
-) -> tuple[Any, str, str]:
-    """Elige la mejor pista: manual > auto, idiomas pedidos en orden.
-
-    Devuelve (transcript, language_code, track_type).
-    """
-    manual = dict(getattr(transcript_list, "_manually_created_transcripts", {}))
-    generated = dict(getattr(transcript_list, "_generated_transcripts", {}))
-
-    def _pick(pool: dict[str, Any]) -> tuple[Any, str] | None:
-        for lang in languages:
-            if lang in pool:
-                return pool[lang], lang
-        # variante por prefijo (es vs es-419, en vs en-US)
-        for lang in languages:
-            for code, tr in pool.items():
-                if code.split("-")[0] == lang.split("-")[0]:
-                    return tr, code
-        if pool:
-            code = next(iter(pool))
-            return pool[code], code
-        return None
-
-    for pool, track_type in ((manual, "manual"), (generated, "auto")):
-        picked = _pick(pool)
-        if picked is not None:
-            return picked[0], picked[1], track_type
-
-    raise NoCaptionsAvailable(
-        "No hay captions disponibles en este video",
-        suggestion="Sin captions: ASR local disponible en Fase 2",
-    )
-
-
 class YouTubeService:
-    """Extrae transcripciones con captions (Fase 1)."""
+    """Extrae transcripciones recorriendo los proveedores en orden."""
 
     def __init__(
         self,
@@ -165,18 +98,45 @@ class YouTubeService:
         rate_limiter: RateLimiter | None = None,
         subtitles: YtDlpSubtitles | None = None,
         enable_subtitle_fallback: bool = True,
+        providers: list[TranscriptProvider] | None = None,
+        breakers: dict[str, CircuitBreaker] | None = None,
+        metrics: ProviderMetrics | None = None,
+        enable_breaker: bool = True,
     ) -> None:
         self.cache = cache
         self.languages = languages
         self.max_duration_seconds = max_duration_seconds
         self._api = api or YouTubeTranscriptApi()
         # Rate limiter preventivo (1s / 10-min); None o enabled=False
-        # para tests unitarios con mock.
+        # para tests unitarios con mock. Vive en el proveedor que toca
+        # la red; se conserva aquí por compatibilidad (mcp_server y
+        # tests lo comparten con el worker).
         self.rate_limiter = rate_limiter if rate_limiter is not None else RateLimiter()
         # Fallback yt-dlp (Fase 2): inyectable para tests; se desactiva
         # con enable_subtitle_fallback=False para no depender de red.
         self._subtitles = subtitles if subtitles is not None else YtDlpSubtitles()
         self._enable_subtitle_fallback = enable_subtitle_fallback
+        # Pipeline (Fase 4, E1): inyectable para tests; por defecto
+        # captions → subtítulos con los componentes de arriba.
+        self.providers = (
+            providers
+            if providers is not None
+            else default_providers(
+                api=self._api,
+                rate_limiter=self.rate_limiter,
+                subtitles=self._subtitles,
+                enable_subtitle_fallback=enable_subtitle_fallback,
+            )
+        )
+        # Resiliencia (Fase 4, E2): un breaker por proveedor + métricas
+        # compartidas; desactivable con enable_breaker=False (tests).
+        self.metrics = metrics if metrics is not None else ProviderMetrics()
+        self.breakers = (
+            breakers
+            if breakers is not None
+            else {p.name: CircuitBreaker(p.name) for p in self.providers}
+        )
+        self.enable_breaker = enable_breaker
 
     def get_transcript(
         self,
@@ -200,98 +160,68 @@ class YouTubeService:
                 if cached is not None:
                     return self._result_from_cache(video_id, cached)
 
-        # Prevención 429: solo en cache miss (los hits no tocan YouTube)
-        self.rate_limiter.acquire()
-
-        try:
-            transcript_list = self._api.list(video_id)
-            transcript, language_code, track_type = _select_track(
-                transcript_list, langs,
+        # Pipeline de proveedores (Fase 4, E1+E2): el primero que tenga
+        # éxito gana; NoCaptionsAvailable cede el turno al siguiente;
+        # el breaker abierto salta el proveedor (fail fast).
+        last_empty: NoCaptionsAvailable | None = None
+        rejected: list[str] = []
+        for provider in self.providers:
+            if not provider.enabled:
+                continue
+            breaker = self.breakers.get(provider.name) if self.enable_breaker else None
+            if breaker is not None and not breaker.allow():
+                self.metrics.record(provider.name, "rejected")
+                rejected.append(provider.name)
+                continue
+            started = time.perf_counter()
+            try:
+                fetched = provider.fetch(video_id, langs)
+            except NoCaptionsAvailable as exc:
+                self.metrics.record(
+                    provider.name, "empty", time.perf_counter() - started,
+                )
+                if breaker is not None:
+                    breaker.record_success()
+                last_empty = exc
+                continue
+            except TranscriptError as exc:
+                self.metrics.record(
+                    provider.name, "failure", time.perf_counter() - started,
+                    error_code=exc.code,
+                )
+                if breaker is not None:
+                    breaker.record_failure()
+                raise
+            self.metrics.record(
+                provider.name, "success", time.perf_counter() - started,
             )
-            fetched = transcript.fetch()
-        except NoCaptionsAvailable:
-            return self._fallback_to_subtitles(video_id, langs, lang_key)
-        except TranscriptError:
-            raise
-        except Exception as exc:  # noqa: BLE001 — mapeamos al dominio
-            mapped = _map_library_error(exc, video_id)
-            if isinstance(mapped, NoCaptionsAvailable):
-                return self._fallback_to_subtitles(video_id, langs, lang_key)
-            raise mapped from exc
+            if breaker is not None:
+                breaker.record_success()
+            return self._store_result(video_id, lang_key, fetched)
 
-        segments = [
-            TranscriptSegment(
-                start=float(snippet.start),
-                end=float(snippet.start) + float(snippet.duration),
-                text=snippet.text.strip(),
+        if rejected and last_empty is None:
+            raise ProviderUnavailable(
+                f"Proveedores no disponibles: {', '.join(rejected)} "
+                "(circuit breaker abierto)",
+                video_id=video_id,
+                suggestion="Esperar al cooldown y reintentar",
             )
-            for snippet in fetched
-        ]
-
-        result = TranscriptResult(
+        raise last_empty or NoCaptionsAvailable(
+            "No hay captions disponibles en este video",
             video_id=video_id,
-            language=language_code,
-            source="youtube_captions",
-            track_type=track_type,
-            segments=segments,
+            suggestion="Sin captions: ASR local disponible en Fase 2",
         )
 
-        if result.duration_seconds > self.max_duration_seconds:
-            raise DurationExceeded(
-                f"El video dura {result.duration_seconds:.0f}s "
-                f"(máximo {self.max_duration_seconds}s)",
-                video_id=video_id,
-                suggestion="Los videos mayores a 2h no están soportados en v1",
-            )
-
-        if self.cache is not None:
-            self.cache.set(
-                video_id, lang_key, track_type,
-                segments=[asdict(s) for s in segments],
-                language_code=language_code,
-                source="youtube_captions",
-            )
-
-        return result
-
-    def _fallback_to_subtitles(
-        self,
-        video_id: str,
-        langs: tuple[str, ...],
-        lang_key: str,
+    def _store_result(
+        self, video_id: str, lang_key: str, fetched: ProviderResult,
     ) -> TranscriptResult:
-        """Intenta yt-dlp cuando no hay captions; si tampoco, lanza no_captions."""
-        if not self._enable_subtitle_fallback:
-            raise NoCaptionsAvailable(
-                "No hay captions disponibles en este video",
-                video_id=video_id,
-                suggestion="Sin captions: ASR local disponible en Fase 2",
-            )
-
-        # Segunda ruta de red (otro proveedor); el RateLimiter ya
-        # absorbió la espera mínima en el intento de captions.
-        try:
-            subtitle_result = self._subtitles.fetch(video_id, langs)
-        except TranscriptError:
-            raise
-        except Exception as exc:  # noqa: BLE001 — mapeamos al dominio
-            raise _map_library_error(exc, video_id) from exc
-
-        segments = [
-            TranscriptSegment(
-                start=float(seg["start"]),
-                end=float(seg["end"]),
-                text=str(seg["text"]).strip(),
-            )
-            for seg in subtitle_result.segments
-        ]
-
+        """Valida duración, cachea y devuelve el resultado normalizado."""
         result = TranscriptResult(
             video_id=video_id,
-            language=subtitle_result.language,
-            source=subtitle_result.source,
-            track_type=subtitle_result.track_type,
-            segments=segments,
+            language=fetched.language,
+            source=fetched.source,
+            track_type=fetched.track_type,
+            segments=fetched.segments,
         )
 
         if result.duration_seconds > self.max_duration_seconds:
@@ -305,7 +235,7 @@ class YouTubeService:
         if self.cache is not None:
             self.cache.set(
                 video_id, lang_key, result.track_type,
-                segments=[asdict(s) for s in segments],
+                segments=[asdict(s) for s in result.segments],
                 language_code=result.language,
                 source=result.source,
             )
