@@ -380,9 +380,12 @@ git merge feature/<desc>
       OK, PR #1 creado y mergeado con `scripts/gh-publish.ps1`.
 - [x] `.github/workflows/ci.yml` (25/09): adaptado del template a Python
       (`setup-python` 3.10 + pytest sin red) en `main`/`develop`/`feature/*`.
-- [ ] **Check `build` requerido en `main`** (25/09): activar manual en
-      *Settings → Branches* — el PAT sin *Administration* da 403 (nota
-      del propio template). Mientras no esté, el PR mergea sin CI verde.
+- [x] **Check `build` requerido en `main`** (25/09): activado por el
+      usuario en *Settings → Branches* (la UI es el camino: el PAT sin
+      *Administration* da 403, nota del propio template). Verificado
+      por sonda en PR #4: `mergeStateStatus` = `BEHIND` con CI
+      `in_progress` → `CLEAN` con `success` (mismo base/head: solo el
+      check cambió ⇒ gating activo, sin modo estricto).
 - [x] Flujo documentado en `.ai/context.md` y memoria persistente.
 - N/A en este repo (Q1, sin Pages): base relativa, `npm run build`,
   heurística de emoji, Settings → Pages, sitio visible.
