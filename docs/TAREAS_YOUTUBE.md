@@ -421,6 +421,13 @@ de cuenta en nuestro flujo.
       servicio+worker; worker 1 job a la vez; videos ≤2h;
       caché SQLite TTL 7 días (`data/`, gitignored); sin autenticación
       ni multiusuario en v1
+- [x] Archivar scripts de verificación citados (`scripts/verify/`, 26/09/2026) —
+      los 5 citados como evidencia (`verify_fase3_search`,
+      `verify_fase4_health_summary`, `verify_d2_v3`, `verify_d2_v4`,
+      `verify_d2_asr`) con `ROOT` portable relativo al repo; smoke
+      offline Fase 3/4 re-verificado EXIT=0; d2_* archivados tal cual
+      (históricos, requieren red/FFmpeg/estado); `verify_d2_search.py`
+      queda en Temp (nadie lo cita)
 - [ ] Documentar decisión en memoria (`brain_ai_memory_save`) —
       **bloqueado esta sesión**: bridge MCP `brain-ai` caído (sin
       tools de memoria/tests); reintentar al reiniciar opencode
