@@ -327,9 +327,10 @@ de cuenta en nuestro flujo.
       (https://github.com/seiji142/youtube-transcripts/pull/2,
       merge `f25a61b`, CI `success` en push y PR — primera corrida
       real de CI en verde).
-- [ ] **Tu turno (UI, 1 min):** activar check requerido `build` en
-      *Settings → Branches → main* (PAT sin Administration → 403,
-      nota del template). Mientras no esté, el PR mergea sin CI verde.
+- [x] Check requerido `build` en `main` (25/09): activado por el
+      usuario en *Settings → Branches*; sonda `mergeStateStatus` en
+      curso con el PR de este cambio (CI pendiente = bloqueado ⇒
+      regla activa).
 - [ ] Pendiente no-bloqueante: guardar episodio en memoria
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
