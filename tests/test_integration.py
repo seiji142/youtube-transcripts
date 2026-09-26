@@ -56,7 +56,6 @@ def _fetch_with_backoff(
     Si el bloqueo persiste, hace ``pytest.skip`` (razón ambiental: rate limit
     de YouTube, no un bug del código).
     """
-    last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
             result = service.get_transcript(url, languages=languages)
@@ -64,7 +63,6 @@ def _fetch_with_backoff(
                 time.sleep(1.0)
             return result
         except VideoBlockedOrUnavailable as exc:
-            last_exc = exc
             if attempt < MAX_RETRIES - 1:
                 wait = BASE_BACKOFF_SECONDS * (2 ** attempt)
                 time.sleep(wait)

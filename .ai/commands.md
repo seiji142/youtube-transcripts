@@ -26,8 +26,9 @@ abre sin completar la checklist de su variante, sin excepciones por
 ### Variante B — codigo no visual
 
 1. [ ] Tests en verde en local: `.venv\Scripts\python -m pytest tests/ -m "not integration" -q`
-2. [ ] Lint/typecheck: **N/A por ahora** (sin linter en el repo; agregar
-   ruff cuando se adopte — rules.md lo exige pre-commit).
+2. [ ] Lint: `.venv\Scripts\ruff check .` en verde (config en
+   `pyproject.toml`; `ruff format` NO adoptado — reformatearía 38
+   archivos, fuera de alcance).
 3. [ ] Smoke test: `mcp_server` importa y registra las tools
    (tests `TestRegistroTools` en verde, incluidos en el paso 1).
 4. [ ] Criterio de aceptacion EXPLICITO del usuario en el chat

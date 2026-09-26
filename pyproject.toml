@@ -1,0 +1,16 @@
+[tool.ruff]
+# Convenciones del proyecto: ver .ai/rules.md §1 (PEP 8, 4 espacios,
+# máximo 120 caracteres por línea, Python 3.10+).
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+
+# Scripts históricos verify_d2_* archivados "tal cual" (sesión 23/09):
+# no se tocan; solo se ignora el import sin uso que ya traían.
+[tool.ruff.lint.per-file-ignores]
+"scripts/verify/verify_d2_*.py" = ["F401"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
