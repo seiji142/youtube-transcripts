@@ -1,12 +1,22 @@
 # Template: Setup de Proyecto — Git Flow + GitHub Pages + opencode/MCP
 
-> **Adaptación a youtube-transcripts (23/09/2026):** copia de
-> `templates/gitflow-scaffold/TEMPLATE_GITFLOW_GH_PAGES.md` como referencia.
-> Aplicado: estructura de ramas (§1-2,§6-7), `.ai/context.md` con "Ramas del
-> Proyecto", `opencode.json` ya resuelto (no copiado). **NO aplica:** §3
-> GitHub Pages / `deploy.yml` / build npm — este repo es Python/MCP sin sitio
-> estático (decisión Q1 en `docs/DECISIONES.md`). `master` = legacy congelada
-> (Q2). Rama de trabajo: `develop` (creada23/09 desde `origin/main`).
+> **Fuente de verdad:** repo privado `seiji142/gitflow-scaffold`
+> (https://github.com/seiji142/gitflow-scaffold), **versión aplicada
+> `2026.09.25`** (25/09/2026). La carpeta local
+> `Proyecto AI/templates/gitflow-scaffold` queda solo como espejo del
+> `scripts/gh-publish.ps1` — el resto puede estar desincronizado.
+>
+> **Adaptación a youtube-transcripts (23/09/2026, actualizada 25/09):**
+> copia del `TEMPLATE_GITFLOW_GH_PAGES.md` como referencia. Aplicado:
+> estructura de ramas (§1-2,§6-7), `.ai/context.md` con "Ramas del
+> Proyecto", `opencode.json` ya resuelto (no copiado); **25/09:**
+> `scripts/gh-publish.ps1` con `-Base`, `.ai/commands.md` con
+> validación pre-PR (variante B) + Publicación vía script, y
+> `.github/workflows/ci.yml` (Python, pytest sin red). **NO aplica:**
+> §3 GitHub Pages / `deploy.yml` / build npm — este repo es Python/MCP
+> sin sitio estático (decisión Q1 en `docs/DECISIONES.md`); `ci.yml`
+> del template adaptado de Node a Python. `master` = legacy congelada
+> (Q2). Rama de trabajo: `develop` (creada 23/09 desde `origin/main`).
 
 Guía replicable para configurar un proyecto nuevo con:
 
@@ -366,11 +376,13 @@ git merge feature/<desc>
 ## 7. Checklist de verificacion
 - [x] `develop` creada y subida con tracking (`origin/develop`).
 - [x] `main` con branch protection (require PR, SIN require approvals).
-- [ ] `gh` autenticado (GH_TOKEN / `gh auth login`) para PRs `develop → main`
-      vía CLI — **en curso 25/09**: `gh auth status` OK, falta Paso 0
-      del usuario (agregar repo al PAT) — ver Fase 5. Opcional: PRs
-      manuales en la UI.
-- [ ] N/A en este repo (Q1: sin Pages): `on: push branches: [main]`,
-      base relativa, `npm run build`, heurística de emoji, Settings →
-      Pages, sitio visible. Solo aplica `Flujo documentado`:
+- [x] `gh` autenticado (GH_TOKEN) — Fase 5 completa 25/09: `gh auth status`
+      OK, PR #1 creado y mergeado con `scripts/gh-publish.ps1`.
+- [x] `.github/workflows/ci.yml` (25/09): adaptado del template a Python
+      (`setup-python` 3.10 + pytest sin red) en `main`/`develop`/`feature/*`.
+- [ ] **Check `build` requerido en `main`** (25/09): activar manual en
+      *Settings → Branches* — el PAT sin *Administration* da 403 (nota
+      del propio template). Mientras no esté, el PR mergea sin CI verde.
 - [x] Flujo documentado en `.ai/context.md` y memoria persistente.
+- N/A en este repo (Q1, sin Pages): base relativa, `npm run build`,
+  heurística de emoji, Settings → Pages, sitio visible.

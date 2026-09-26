@@ -307,33 +307,42 @@ de cuenta en nuestro flujo.
       habla" ya no se consigue por búsqueda; se documenta como
       limitación, no como deuda de código. **FASE2 CERRADA** ✅
 
-### PRÓXIMA SESIÓN (25/09/2026) — FASE 4 CERRADA (E1-E3), v1 completo
+### PRÓXIMA SESIÓN (25/09/2026) — v1 PUBLICADO + template `2026.09.25`
 - [x] Fase 4 implementada y verificada (25/09): `TranscriptProvider` +
       circuit breaker + métricas + `youtube_health` + resúmenes
       extractivos + `youtube_transcript_summary` — **334 tests unit
       en verde** + verificación real (`1m7fTsJzoao`); decisiones en
-      `docs/DECISIONES.md` (sección Fase 4); errores registrados en
-      `docs/LECCIONES.md` §10. **FASE 4 CERRADA** ✅ — **v1 funcional
-      completo** (Fases 1-4).
+      `docs/DECISIONES.md` (sección Fase 4). **FASE 4 CERRADA** ✅ —
+      **v1 funcional completo** (Fases 1-4).
+- [x] Publicar: **PR #1 MERGEADO 25/09**
+      (https://github.com/seiji142/youtube-transcripts/pull/1,
+      `develop → main`, 6 commits, merge `7a3a9c0`) vía
+      `.\scripts\gh-publish.ps1 -Merge` — **v1 publicado en `main`**
+      por flujo PR (sin commits directos).
+- [x] Template migrado a repo `seiji142/gitflow-scaffold` (25/09,
+      versión `2026.09.25`): `gh-publish.ps1` con `-Base` (proyecto +
+      espejo local), `.ai/commands.md` con validación pre-PR
+      (variante B) + Publicación vía script, `.github/workflows/ci.yml`
+      adaptado a Python (pytest sin red).
+- [ ] **Tu turno (UI, 1 min):** activar check requerido `build` en
+      *Settings → Branches → main* (PAT sin Administration → 403,
+      nota del template). Mientras no esté, el PR mergea sin CI verde.
 - [ ] Pendiente no-bloqueante: guardar episodio en memoria
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
-- [ ] Publicar (cuando decidas): **PR #1 creado 25/09**
-      (https://github.com/seiji142/youtube-transcripts/pull/1,
-      `develop → main`, 5 commits, MERGEABLE, sin mergear) vía
-      `.\scripts\gh-publish.ps1` — **escritura del PAT verificada
-      real** ✅ (Fase 5 completa). Mergear con
-      `.\scripts\gh-publish.ps1 -Merge` o en la UI. `master` legacy
-      congelada en `830914e` (borrar cuando el flujo esté validado).
+- [ ] `master` legacy congelada en `830914e` — borrar cuando el
+      flujo esté validado.
 - Notas de entorno al arrancar:
-  - **Rama:** `develop` (gitflow23/09). `main` protegido = PR obligatorio
-    (sin approvals). `master` legacy congelada en `830914e`.
-  - **Tools MCP `brain-ai` caídas en la sesión 25/09 (Fase 4)** — bridge
-    desconectado: sin memoria/tests/commands; fallback pytest por bash
-    y episodio de memoria pendiente. Reiniciar opencode para
+  - **Rama:** `develop` (gitflow23/09, template `2026.09.25` desde
+    repo GitHub). `main` protegido = PR obligatorio (+ check `build`
+    pendiente de activar). `master` legacy congelada en `830914e`.
+  - **`gh` autenticado** vía `GH_TOKEN` (PAT fine-grained con los 3
+    repos); PRs y merges SIEMPRE por `.\scripts\gh-publish.ps1`
+    (regla nueva: nunca `gh pr create/merge` directos).
+  - **Tools MCP `brain-ai` caídas en la sesión 25/09** — bridge
+    desconectado: sin memoria/tests/commands; fallback pytest por
+    bash y episodio de memoria pendiente. Reiniciar opencode para
     recuperarlas.
-  - **`gh` sin autenticar:** PRs `develop → main` manuales en la UI, o
-    seguir **Fase 5** de `docs/gitflow-scaffold.md` (PAT fine-grained).
 
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
 - [x] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
