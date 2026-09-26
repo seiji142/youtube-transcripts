@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — Edit con `oldString` incluyendo el encabezado siguiente: 3 veces seguidas
+
+**Tipo:** A (error de edición — contenido perdido y restaurado a mano)
+**Comando:** `edit` en `docs/LECCIONES.md` con `oldString = "---\n\n## <encabezado siguiente>"`
+**Error/Warning:** cada inserción de una nueva entrada comió el encabezado de la entrada que seguía (queda una entrada "huérfana" que arranca en `**Tipo:**`); detectado en las 3 revisiones, restaurado manualmente las 3 veces.
+**Causa raíz:** al insertar antes de una entrada existente, el `oldString` incluía deliberadamente `---\n\n## Título` como ancla (para que no hubiera matches múltiples) pero el `newString` solo replicaba el `---`, no el `## Título`. El ancla consume exactamente lo que declara.
+**Fix:** si el `oldString` incluye el encabezado siguiente, el `newString` debe **repetirlo al final**. Verificado con `Read` post-edición cada vez.
+**Verificación:** los 4 encabezados de 25/09 presentes tras la restauración (Read líneas 1-60).
+**Lección:** anclas de edición con encabezados = riesgo conocido; alternativa sin riesgo: anclar solo en `**Tipo:**` de la entrada destino o insertar por posición. Regla personal: tras toda inserción de entrada en LECCIONES, releer el bloque.
+
+---
+
 ## 2026-09-25 — PAT fine-grained de otro repo: 403 hasta en LECTURAS de repo público
 
 **Tipo:** C (output inesperado — cambia el plan de verificación Fase 5)
@@ -28,6 +40,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 **Fix:** Ninguno en código — reordena la Fase 5: el **Paso 0 del usuario en el navegador** (agregar `seiji142/youtube-transcripts` al PAT + *Update token*) es prerrequisito **también para verificar lecturas**, no solo escritura. Re-ejecutar la verificación tras su confirmación.
 **Verificación:** pendiente (bloqueado en Paso 0 del usuario).
 **Lección:** Con fine-grained *Only select repositories*, el token no existe fuera de sus repos (403 en todo). El diagnóstico del playbook se amplía: *lectura OK + escritura 403 = permisos; lectura 403 en repo público = el repo no está en Repository access (o token vencido/revocado)*.
+
+---
+
+## 2026-09-25 — Comillas simples dentro de `--jq` con PowerShell 5.1 → parse error
+
+**Tipo:** A (error duro — comando con exit≠0)
+**Comando:** `gh run list ... --jq ".[] | .event + ' | ' + ..."` y `gh pr view 2 ... --jq ".state + ' ' + .mergedAt"`
+**Error/Warning:** `failed to parse jq expression (line 1, column 16) .[] | .event + ' | ' + ...  ^ unexpected token "'"`
+**Causa raíz:** PowerShell 5.1 al pasar argumentos a exé nativos **destruye las comillas simples** anidadas dentro de comillas dobles: `gh` recibe el jq partido/malcomillado y falla el parser de jq. No es jq ni gh — es el quoting de PS 5.1.
+**Fix:** escribir expresiones `--jq` **sin comillas simples ni `|`** (p. ej. `--jq .state` / `.[]` por campo, o la salida tabular cruda de `gh run list`). Alternativas: doble escaping `\"` o guardar la expresión en una variable. Mismo patrón que el incidente `--jq ".tree[] | select(.type==\"blob\")"` del día (también falló).
+**Verificación:** `gh run list --limit 3` (tabla cruda) y `git log origin/main` dieron la evidencia pendiente (CI success + `f25a61b Merge pull request #2`).
+**Lección:** en PS 5.1, expresiones jq para `gh` deben evitar comillas simples y pipes; si es compleja, usar la salida cruda de gh y procesar en PowerShell, o `--jq` con solo identificadores/llaves.
 
 ---
 
