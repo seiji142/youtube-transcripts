@@ -323,7 +323,10 @@ de cuenta en nuestro flujo.
       versión `2026.09.25`): `gh-publish.ps1` con `-Base` (proyecto +
       espejo local), `.ai/commands.md` con validación pre-PR
       (variante B) + Publicación vía script, `.github/workflows/ci.yml`
-      adaptado a Python (pytest sin red).
+      adaptado a Python (pytest sin red) — **PR #2 mergeado**
+      (https://github.com/seiji142/youtube-transcripts/pull/2,
+      merge `f25a61b`, CI `success` en push y PR — primera corrida
+      real de CI en verde).
 - [ ] **Tu turno (UI, 1 min):** activar check requerido `build` en
       *Settings → Branches → main* (PAT sin Administration → 403,
       nota del template). Mientras no esté, el PR mergea sin CI verde.
