@@ -1,26 +1,26 @@
 <#
-  gh-publish.ps1 - Crea (y opcionalmente mergea) un PR de una rama a main usando gh CLI.
-
-  Copiado de templates/gitflow-scaffold/scripts/gh-publish.ps1 (Fase 5)
-  con una adaptacion: este repo es Python/MCP sin GitHub Pages, asi que
-  el mensaje final no menciona deploy automatico.
+  gh-publish.ps1 - Crea (y opcionalmente mergea) un PR de una rama a su base usando gh CLI.
 
   Requisitos:
     - git + gh CLI instalados
-    - PAT fine-grained con este repo en Repository access (ver
-      docs/gitflow-scaffold.md Fase 5): variable de entorno User
-      GH_TOKEN, o `gh auth login --with-token`
+    - Autenticacion UNA vez con PAT (ver docs/CONFIG_API_TOKEN_PASO_A_PASO.md):
+      variable de entorno User GH_TOKEN, o `gh auth login --with-token`
     - Ejecutar desde la raiz del repositorio
 
   Uso:
-    .\scripts\gh-publish.ps1                     # crea PR develop -> main
-    .\scripts\gh-publish.ps1 -Merge              # crea PR y lo mergea (cero clics)
-    .\scripts\gh-publish.ps1 -Rama feature/x     # publica otra rama
-    .\scripts\gh-publish.ps1 -Repo usuario/repo  # apunta a otro repositorio
+    .\gh-publish.ps1                                        # crea PR develop -> main
+    .\gh-publish.ps1 -Merge                                 # crea PR y lo mergea (cero clics)
+    .\gh-publish.ps1 -Rama feature/x                        # publica otra rama a main
+    .\gh-publish.ps1 -Rama feature/x -Base develop -Merge   # PR feature/x -> develop + merge
+    .\gh-publish.ps1 -Repo usuario/repo                     # apunta a otro repositorio
+
+  OBLIGATORIO para el agente: NUNCA usar `gh pr create` / `gh pr merge`
+  directos. Todo PR y merge pasa por este script.
 #>
 
 param(
     [string]$Rama = "develop",
+    [string]$Base = "main",
     [switch]$Merge,
     [string]$Repo = "",
     [string]$Titulo = ""
@@ -64,21 +64,21 @@ if ($LASTEXITCODE -ne 0) {
     Exit-WithError "no se pudo pushear la rama '$Rama'"
 }
 
-# 2) Buscar PR abierto existente (develop -> main)
-$listArgs = @("pr", "list", "--head", $Rama, "--base", "main", "--json", "url", "--jq", ".[0].url") + $extra
+# 2) Buscar PR abierto existente (Rama -> Base)
+$listArgs = @("pr", "list", "--head", $Rama, "--base", $Base, "--json", "url", "--jq", ".[0].url") + $extra
 $prUrl = (& gh @listArgs 2>$null | Out-String).Trim()
 if ($prUrl -eq "null") { $prUrl = "" }
 
 # 3) Crear PR si no existe
 if (-not $prUrl) {
-    if (-not $Titulo) { $Titulo = "Publish $Rama to main" }
-    $body = "Publicacion automatica de '$Rama' ($(Get-Date -Format 'yyyy-MM-dd'))."
-    $createArgs = @("pr", "create", "--base", "main", "--head", $Rama, "--title", $Titulo, "--body", $body) + $extra
+    if (-not $Titulo) { $Titulo = "Publish $Rama to $Base" }
+    $body = "Publicacion automatica de '$Rama' a '$Base' ($(Get-Date -Format 'yyyy-MM-dd'))."
+    $createArgs = @("pr", "create", "--base", $Base, "--head", $Rama, "--title", $Titulo, "--body", $body) + $extra
     $out = & gh @createArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
         $err = ($out | Out-String)
         if ($err -match "no commits between|No commits between") {
-            Write-Host "No hay cambios pendientes: '$Rama' ya esta al dia con main." -ForegroundColor Yellow
+            Write-Host "No hay cambios pendientes: '$Rama' ya esta al dia con $Base." -ForegroundColor Yellow
             exit 0
         }
         Exit-WithError ("no se pudo crear el PR: " + $err.Trim())
@@ -99,7 +99,7 @@ if ($Merge) {
     if ($LASTEXITCODE -ne 0) {
         Exit-WithError ("no se pudo mergear: " + ($out | Out-String).Trim())
     }
-    Write-Host "Merge completado en main." -ForegroundColor Green
+    Write-Host "Merge completado en $Base. Si es main, GitHub Pages se despliega automaticamente." -ForegroundColor Green
 } else {
     Write-Host "Siguiente paso: mergear el PR en GitHub, o re-ejecutar con -Merge." -ForegroundColor Yellow
 }

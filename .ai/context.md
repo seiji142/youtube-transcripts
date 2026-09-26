@@ -73,8 +73,9 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 
 ## Ramas del Proyecto
 
-> Setup gitflow23/09/2026 (plantilla `templates/gitflow-scaffold`;
-> decisiones en `docs/DECISIONES.md`, checklist en `docs/gitflow-scaffold.md`).
+> Setup gitflow 23/09/2026 (fuente: repo `seiji142/gitflow-scaffold`,
+> versión `2026.09.25` aplicada 25/09; decisiones en
+> `docs/DECISIONES.md`, checklist en `docs/gitflow-scaffold.md`).
 
 | Rama | Proposito | Sale de | Vuelve a | Proteccion |
 |------|-----------|---------|----------|------------|

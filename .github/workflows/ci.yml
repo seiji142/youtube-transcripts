@@ -1,0 +1,26 @@
+name: CI
+
+# Compuerta externa: main exige este workflow en verde (branch protection).
+# Adaptado del template seiji142/gitflow-scaffold 2026.09.25 (stack Python:
+# codigo en la raiz, pytest sin red).
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop, "feature/*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+      # Tests sin red (integracion marcada 'integration' queda fuera del gate)
+      - name: Tests
+        run: python -m pytest tests/ -m "not integration" -q
+      # Variante B del template: lint N/A por ahora (sin linter en el repo)

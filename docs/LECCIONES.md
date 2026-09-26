@@ -31,6 +31,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-25 — Base64 de `gh api` roto con el pipeline de PowerShell 5.1
+
+**Tipo:** A (error duro — comando falló)
+**Comando:** `gh api repos/seiji142/gitflow-scaffold/contents/VERSION --jq '.content' | ForEach-Object { [Convert]::FromBase64String($_ ...) }`
+**Error/Warning:** `No se encuentra ninguna sobrecarga para "FromBase64String" y el número de argumentos "2"` (repetido por cada línea del contenido)
+**Causa raíz:** el `.content` llega como **múltiples líneas** de base64; el pipeline las manda de a una a `FromBase64String`, que recibe 2 argumentos (string + el byte de `\r` residual o la siguiente línea). PowerShell 5.1, no la API de GitHub.
+**Fix:** dos alternativas validadas — (1) `gh api -H "Accept: application/vnd.github.raw" repos/.../contents/<file>` (devuelve texto crudo, preferida), (2) unir las líneas antes de decodificar: `(gh api ... --jq .content) -replace "\`n",""` → un solo `FromBase64String`. También: el redirect `>` de PS 5.1 escribe **UTF-16** (BOM 255,254) — para archivos byte-exactos usar `[IO.File]::WriteAllBytes`.
+**Verificación:** `gh api -H raw` + `WriteAllBytes` reprodujeron el script remoto (90 líneas, con `-Base`), sintaxis PSParser 0 errores en local y en template.
+**Lección:** para contenido crudo de la API de GitHub, `Accept: application/vnd.github.raw` evita todo el ciclo base64+pipeline; nunca confiar en `>` de PowerShell 5.1 para archivos de terceros (UTF-16 silencioso).
+
+---
+
 ## 2026-09-25 — SyntaxError en test nuevo: `def test_overall trae_...` sin guion bajo
 
 **Tipo:** A (error duro — collection error de pytest)
