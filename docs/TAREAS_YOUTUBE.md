@@ -336,12 +336,16 @@ de cuenta en nuestro flujo.
       tras reiniciar opencode (25/09): Fase 4 (`ep_2139a15e`), Fase 5
       + template (`ep_ea964d67`), gotchas PowerShell/edición/git
       (`ep_23f5956b`). Bridge `brain-ai` restaurado (tools OK).
-- [ ] `master` legacy congelada en `830914e` — borrar cuando el
-      flujo esté validado.
+- Pendientes opcionales:
+  - [ ] `master` legacy congelada en `830914e` — borrar cuando el
+        flujo esté validado.
+  - [ ] Agregar linter **ruff** (step 2 de la variante B en
+        `.ai/commands.md`, hoy N/A): config en `pyproject.toml` +
+        correrlo pre-commit; al activarlo, actualizar ese paso 2.
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09, template `2026.09.25` desde
-    repo GitHub). `main` protegido = PR obligatorio (+ check `build`
-    pendiente de activar). `master` legacy congelada en `830914e`.
+    repo GitHub). `main` protegido = PR obligatorio + check `build`
+    **activo** (sonda PR #4). `master` legacy congelada en `830914e`.
   - **`gh` autenticado** vía `GH_TOKEN` (PAT fine-grained con los 3
     repos); PRs y merges SIEMPRE por `.\scripts\gh-publish.ps1`
     (regla nueva: nunca `gh pr create/merge` directos).
