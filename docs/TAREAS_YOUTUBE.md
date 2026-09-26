@@ -332,9 +332,10 @@ de cuenta en nuestro flujo.
       `mergeStateStatus=BEHIND` con CI `in_progress` → `CLEAN` con CI
       `success` (base/head constantes durante la corrida ⇒ el bloqueo
       vino del check; sin modo estricto, verde alcanza).
-- [ ] Pendiente no-bloqueante: guardar episodio en memoria
-      (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
-      sesión (sin tools); reintentar al reiniciar opencode.
+- [x] Guardar episodios en memoria (`brain_ai_memory_save`) — **hecho**
+      tras reiniciar opencode (25/09): Fase 4 (`ep_2139a15e`), Fase 5
+      + template (`ep_ea964d67`), gotchas PowerShell/edición/git
+      (`ep_23f5956b`). Bridge `brain-ai` restaurado (tools OK).
 - [ ] `master` legacy congelada en `830914e` — borrar cuando el
       flujo esté validado.
 - Notas de entorno al arrancar:
@@ -344,10 +345,8 @@ de cuenta en nuestro flujo.
   - **`gh` autenticado** vía `GH_TOKEN` (PAT fine-grained con los 3
     repos); PRs y merges SIEMPRE por `.\scripts\gh-publish.ps1`
     (regla nueva: nunca `gh pr create/merge` directos).
-  - **Tools MCP `brain-ai` caídas en la sesión 25/09** — bridge
-    desconectado: sin memoria/tests/commands; fallback pytest por
-    bash y episodio de memoria pendiente. Reiniciar opencode para
-    recuperarlas.
+  - **Tools MCP `brain-ai` restauradas** (reinicio de opencode 25/09):
+    memoria/tests/commands OK; episodios de la sesión guardados.
 
 ### FASE 3 — Experiencia tipo NotebookLM (RAG)
 - [x] Chunking 500-1000 tokens, solapamiento 10-15%, sin cortar frases,
