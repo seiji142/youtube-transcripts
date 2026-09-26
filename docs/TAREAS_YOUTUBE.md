@@ -328,9 +328,10 @@ de cuenta en nuestro flujo.
       merge `f25a61b`, CI `success` en push y PR — primera corrida
       real de CI en verde).
 - [x] Check requerido `build` en `main` (25/09): activado por el
-      usuario en *Settings → Branches*; sonda `mergeStateStatus` en
-      curso con el PR de este cambio (CI pendiente = bloqueado ⇒
-      regla activa).
+      usuario en *Settings → Branches*; **sonda en PR #4**:
+      `mergeStateStatus=BEHIND` con CI `in_progress` → `CLEAN` con CI
+      `success` (base/head constantes durante la corrida ⇒ el bloqueo
+      vino del check; sin modo estricto, verde alcanza).
 - [ ] Pendiente no-bloqueante: guardar episodio en memoria
       (`brain_ai_memory_save`) — bridge MCP `brain-ai` caído esta
       sesión (sin tools); reintentar al reiniciar opencode.
