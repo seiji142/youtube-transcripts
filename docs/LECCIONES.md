@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-26 — `.ps1` ejecutado por asociación se abre en Bloc de notas: salida vacía con EXIT 0
+
+**Tipo:** C (output inesperado — cambia el plan de invocación)
+**Comando:** `.\scripts\gh-publish.ps1` (vía runner `run_command`, sin `powershell -File`)
+**Error/Warning:** (vacío en stdout/stderr, `returncode: 0`) — el script nunca se ejecutó; Windows abrió el `.ps1` en el Bloc de notas por asociación de archivos (el usuario lo vio en pantalla).
+**Causa raíz:** el runner lanzó el `.ps1` como documento (asociación `.ps1` → Bloc de notas) en vez de pasarlo a PowerShell; EXIT 0 es del "abrir", no del script. Evidencia: re-lanzado con `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\gh-publish.ps1` sí produjo salida real (`PR creado: .../pull/7`).
+**Fix:** invocar SIEMPRE scripts `.ps1` con `powershell -NoProfile -ExecutionPolicy Bypass -File <script> [args]` explícito, nunca por ruta directa.
+**Verificación:** re-comando con `-File` → PR #7 creado, CI en verde, `-Merge` OK.
+**Lección:** salida vacía + EXIT 0 en un `.ps1` = no se ejecutó (revisar asociación antes de asumir éxito).
+
+---
+
 ## 2026-09-25 — Violación §9: commit con bash en vez de tools MCP git
 
 **Tipo:** A (violación de proceso — rules.md §9)
