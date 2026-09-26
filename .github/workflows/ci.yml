@@ -23,4 +23,5 @@ jobs:
       # Tests sin red (integracion marcada 'integration' queda fuera del gate)
       - name: Tests
         run: python -m pytest tests/ -m "not integration" -q
-      # Variante B del template: lint N/A por ahora (sin linter en el repo)
+      # Variante B del template: ruff adoptado pre-commit en local
+      # (ver .ai/commands.md paso 2); el gate CI sigue siendo tests.

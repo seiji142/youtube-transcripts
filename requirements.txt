@@ -8,3 +8,4 @@ faster-whisper==1.2.1
 mcp
 pytest
 pytest-asyncio
+ruff==0.16.9  # linter pre-commit (ver .ai/commands.md variante B paso 2)

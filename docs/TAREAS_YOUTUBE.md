@@ -337,15 +337,15 @@ de cuenta en nuestro flujo.
       + template (`ep_ea964d67`), gotchas PowerShell/edición/git
       (`ep_23f5956b`). Bridge `brain-ai` restaurado (tools OK).
 - Pendientes opcionales:
-  - [ ] `master` legacy congelada en `830914e` — borrar cuando el
-        flujo esté validado.
+  - [x] `master` legacy congelada en `830914e` — **borrada 26/09/2026**
+        (local + remota; verificada contenida en `main`).
   - [ ] Agregar linter **ruff** (step 2 de la variante B en
         `.ai/commands.md`, hoy N/A): config en `pyproject.toml` +
         correrlo pre-commit; al activarlo, actualizar ese paso 2.
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09, template `2026.09.25` desde
     repo GitHub). `main` protegido = PR obligatorio + check `build`
-    **activo** (sonda PR #4). `master` legacy congelada en `830914e`.
+    **activo** (sonda PR #4). `master` legacy borrada 26/09.
   - **`gh` autenticado** vía `GH_TOKEN` (PAT fine-grained con los 3
     repos); PRs y merges SIEMPRE por `.\scripts\gh-publish.ps1`
     (regla nueva: nunca `gh pr create/merge` directos).
@@ -428,9 +428,9 @@ de cuenta en nuestro flujo.
       offline Fase 3/4 re-verificado EXIT=0; d2_* archivados tal cual
       (históricos, requieren red/FFmpeg/estado); `verify_d2_search.py`
       queda en Temp (nadie lo cita)
-- [ ] Documentar decisión en memoria (`brain_ai_memory_save`) —
-      **bloqueado esta sesión**: bridge MCP `brain-ai` caído (sin
-      tools de memoria/tests); reintentar al reiniciar opencode
+- [x] Documentar decisión en memoria (`brain_ai_memory_save`) —
+      hecho 26/09/2026 (bridge operativo; episodios `ep_b5c7fb...` y
+      anteriores). La nota de "bloqueado" era de la sesión del 25/09.
 
 ---
 

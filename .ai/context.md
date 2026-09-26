@@ -82,7 +82,6 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 | `main` | Produccion (GitHub default) | — | — | Requiere PR, SIN "Require approvals" |
 | `develop` | Desarrollo diario (rama por defecto) | `main` | `main` (PR al publicar) | No |
 | `feature/<desc>` | Cada tarea o experimento | `develop` | `develop` (PR) | No |
-| `master` | **Legacy congelada** en `830914e` (histórico) | — | — | Se borra cuando el flujo esté validado |
 
 Reglas de comportamiento:
 - Trabajar SIEMPRE en `develop`. Antes de modificar, verificar la rama con
