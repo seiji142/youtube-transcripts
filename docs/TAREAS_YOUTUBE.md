@@ -339,9 +339,12 @@ de cuenta en nuestro flujo.
 - Pendientes opcionales:
   - [x] `master` legacy congelada en `830914e` — **borrada 26/09/2026**
         (local + remota; verificada contenida en `main`).
-  - [ ] Agregar linter **ruff** (step 2 de la variante B en
-        `.ai/commands.md`, hoy N/A): config en `pyproject.toml` +
-        correrlo pre-commit; al activarlo, actualizar ese paso 2.
+  - [x] Agregar linter **ruff** — **adoptado 26/09/2026**: config en
+        `pyproject.toml` (E/F/W, línea 120, py310) + `ruff==0.16.9` en
+        `requirements.txt`; `ruff check .` en verde (2 fixes en tests +
+        ignore F401 documentado en `verify_d2_*` históricos); paso 2 de
+        la variante B actualizado en `.ai/commands.md`. `ruff format`
+        NO adoptado (reformatearía 38 archivos, fuera de alcance).
 - Notas de entorno al arrancar:
   - **Rama:** `develop` (gitflow23/09, template `2026.09.25` desde
     repo GitHub). `main` protegido = PR obligatorio + check `build`
