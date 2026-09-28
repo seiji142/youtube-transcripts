@@ -444,6 +444,8 @@ de cuenta en nuestro flujo.
 - Proveedor ASR externo como dependencia obligatoria: solo adaptador opcional.
 - Integración/registro de tools en brain-ai-01: fuera del v1; este proyecto
   expone su propio servidor MCP.
+- Puente multiproyecto (este repo como herramienta para agentes de otros
+  proyectos): ver `docs/PLAN_PUENTE_MULTIPROYECTO.md` (fases P0–P3).
 
 ---
 
