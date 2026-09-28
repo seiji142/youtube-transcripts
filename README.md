@@ -88,6 +88,12 @@ Guía para agentes (qué tool usar):
 | Transcribir / encolar ASR | `youtube_transcript` (+ `youtube_transcript_status` si devuelve `processing`) |
 | Diagnóstico (proveedores, breakers) | `youtube_health` |
 
+Consumo fiel (lección P3, ver `docs/PLAN_PUENTE_MULTIPROYECTO.md` §6):
+conservá las citas `&t=` en tus entregables; ante fragmentos
+truncados o corruptos (típico de auto-captions), verificá el tramo con
+`youtube_transcript_read` y citá textual en vez de reinterpretar lo
+dudoso (caso "yemitas" → "cebollas grandes").
+
 Proyecto piloto: `Proyecto AI/youtube-mcp-piloto` (solo `opencode.json`
 con este bloque). Ver `docs/PLAN_PUENTE_MULTIPROYECTO.md` (fases P0–P3).
 
