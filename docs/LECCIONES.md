@@ -19,6 +19,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-28 — `Remove-Item` de caché huérfana: archivo bloqueado por proceso MCP pre-fix
+
+**Tipo:** A (error duro — `RemoveFileSystemItemIOError`)
+**Comando:** `Remove-Item -LiteralPath "C:\...\youtube-mcp-piloto\data\youtube.db"` (2 intentos)
+**Error/Warning:** `El proceso no puede obtener acceso al archivo ... porque está siendo utilizado en otro proceso.` (`IOException`, exit ≠ 0)
+**Causa raíz:** un `mcp_server.py` con **código pre-fix** (PID 16092, arrancado 28/09 13:27 con cwd del piloto) mantiene la conexión SQLite abierta a esa caché. Evidencia: `Get-CimInstance Win32_Process` muestra 2 instancias de `mcp_server.py` (PIDs 4928 desde 26/09 = sesión de este repo; 16092 desde 28/09 = sesión del piloto). El fix de `DB_PATH` (commit `8bb8d23`) hace que servidores nuevos nunca toquen ese archivo, pero no cierra los ya vivos.
+**Fix:** diferido — requiere cerrar la sesión del piloto (mata el PID 16092) y reintentar `Remove-Item`. NO matar procesos sin confirmación: 4928 es el MCP de esta sesión.
+**Verificación:** pendiente (re-`Remove-Item` → `Test-Path = False`).
+**Lección:** procesos MCP largamente vivos retienen locks de SQLite; al purgar artefactos, primero diagnosticar el holder (`Win32_Process`) y matar SOLO los procesos cuyo cwd/propietario se identificó.
+
+---
+
 ## 2026-09-28 — `Copy-Item -LiteralPath` con wildcard no copia (silencioso)
 
 **Tipo:** C (output inesperado — cambia el plan de comandos)

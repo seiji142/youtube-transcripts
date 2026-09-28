@@ -146,17 +146,36 @@ Prompt sin contexto: "Haz lo que dice este video:
   (b) que `search`/`read` conserven texto crudo y el agente cite en
   vez de parafrasear lo dudoso.
 
-## 7. Evidencia P4c — A/B con capa de comportamiento (fecha: ____)
+## 7. Evidencia P4c — A/B con capa de comportamiento (28/09/2026)
 
-Baseline = §6. Mismos 3 criterios:
+Baseline = §6 (mismo prompt, mismo video `KS8M0xAna7s`, sesión nueva
+en el piloto con la capa de 3 archivos):
 
 | Criterio | P3 (sin capa) | P4c (con capa) |
 |----------|---------------|----------------|
-| Citas `&t=` en el entregable | ✗ | ____ |
-| "Cebollas" inventada (yemitas) | ✗ | ____ |
-| Ejecutó vs. ofreció menú | ✗ (preguntó) | ____ |
+| Citas `&t=` en el entregable | ✗ (0 citas) | ✅ ~30 URLs `&t=` completas, cada paso e ingrediente |
+| "Cebollas" inventada (yemitas) | ✗ (cantidad fabricada) | ✅ "NO SÉ la cantidad, el video no la dice" (t=41); "un par de llamitas" citado literal |
+| Ejecutó vs. ofreció menú | ✗ (preguntó) | ✅ "Ejecutado" — entregable directo (`receta-tortilla-patata-sarten-acero.md`, 81 líneas, verificado por lectura) |
 
-Detalle de la sesión P4c: ____
+**Bonus (no pedidos, señal de internalización):**
+- Nota de fidelidad propia en el entregable: los 2 captions dudosos
+  citados literalmente con verificación previa por
+  `youtube_transcript_read` (tramos 55–75s y 8–20s) — el flujo de
+  `system.md` aplicado sin que se lo pidieran.
+- Sección de postura epistémica (SÉ / NO SÉ / NO APLICA) en el
+  entregable — molde copiado.
+- Repara también el caso menor de P3: donde la v1 escribió "para que
+  no se oxide" (fabricado), ahora mantiene "y no se nos el mace"
+  textual (línea 31).
+- Tabla de ingredientes "solo los que el video nombra" —
+  anti-fabricación aplicada.
+
+**Veredicto:** 3/3 criterios en verde; la capa de comportamiento del
+consumidor cierra los hallazgos de P3. Puente P0–P4 validado.
+
+**Nota metodológica:** el baseline P3 corrió con descriptions viejas
+(PR #10 después); el A/B mide "capa nueva + descripciones reforzadas"
+vs. baseline (ya anticipado en P4a).
 
 ## 8. Decisiones de diseño (Fase P4, 28/09/2026)
 
