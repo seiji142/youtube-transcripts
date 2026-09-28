@@ -13,11 +13,11 @@ yt-dlp, audio +FFmpeg, ASR local faster-whisper (verificado real:
 + tool `search` con citas `&t=`); **resiliencia** (interfaz
 `TranscriptProvider`, circuit breaker 5/60s→300s±20% + métricas +
 tool `health`) y **resúmenes extractivos** (TF-IDF + tool `summary`
-con citas). Suite **334 unit + 8 integración**; verificaciones reales
-**PASS** (25/09, ver `docs/LECCIONES.md`).
+con citas). Suite **342 unit + 8 integración**; verificaciones reales
+**PASS** (25-26/09, ver `docs/LECCIONES.md`).
 
-Siguiente: **publicar** (PR `develop → main` en la UI) u opcional
-Fase 5 (`gh` + PAT). Ver `docs/TAREAS_YOUTUBE.md`.
+Siguiente: puente multiproyecto (ver
+`docs/PLAN_PUENTE_MULTIPROYECTO.md`). Ver `docs/TAREAS_YOUTUBE.md`.
 
 ## Estructura
 
@@ -25,7 +25,7 @@ Fase 5 (`gh` + PAT). Ver `docs/TAREAS_YOUTUBE.md`.
 |------|-----------|
 | `services/` | Pipeline: `youtube_urls`, `youtube_errors`, `youtube_cache`, `youtube_service`, `youtube_rate_limit`, `youtube_subtitles`, `youtube_audio`, `youtube_asr`, `youtube_jobs`, `youtube_worker`, `youtube_chunking`, `youtube_index`, `youtube_providers`, `youtube_breaker`, `youtube_summarize` |
 | `mcp_server.py` | Servidor MCP propio (`youtube_transcript`, `_status`, `_read`, `_search`, `health`, `_summary`) + thread worker ASR |
-| `tests/` | 334 unit + 8 integración (marcador `integration`) |
+| `tests/` | 342 unit + 8 integración (marcador `integration`) |
 | `data/` | SQLite local (caché + jobs + índice FTS5, gitignored) |
 | `docs/TAREAS_YOUTUBE.md` | Plan, fases, decisiones, criterios de aceptación |
 | `docs/investigacion-youtube/` | 4 docs de investigación externa |
@@ -50,6 +50,46 @@ youtube-transcript-api (captions)   ← Fase 1 ✅
 Servidor MCP **propio** (`mcp_server.py`), independiente de `brain-ai-01`.
 No todos los consumidores necesitan ambos proyectos; este repo es
 autocontenido (lógica + exposición MCP). Registro en `opencode.json`.
+
+## Consumir desde otros proyectos (puente multiproyecto)
+
+Cualquier proyecto Opencode puede usar este repo como herramienta para
+entender videos de YouTube. Agregar al `opencode.json` del consumidor:
+
+```json
+"mcp": {
+  "youtube-transcripts": {
+    "type": "local",
+    "command": [
+      "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\.venv\\Scripts\\python.exe",
+      "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\mcp_server.py"
+    ],
+    "enabled": true
+  }
+}
+```
+
+Gotchas:
+
+- Usar el **`.venv` de este repo**, no el `python` global (conflicto
+  `starlette` vs `fastapi`; ver `docs/TAREAS_YOUTUBE.md` secc. 7).
+- La caché vive en `data/` **de este repo** (SQLite local, gitignored);
+  los videos ya consultados responden offline.
+- `YOUTUBE_WORKER=0` desactiva el worker ASR (modo solo-lectura).
+- No sondear YouTube en ráfaga: rate-limit con pausa ante 429.
+
+Guía para agentes (qué tool usar):
+
+| Necesidad | Tool |
+|-----------|------|
+| "¿Qué dice / qué hay que hacer?" (idea central) | `youtube_transcript_summary` (secciones + overall, citas `&t=`) |
+| Detalle citado de un tema puntual | `youtube_transcript_search` (fragmentos BM25, nunca el texto entero) |
+| Leer un tramo por tiempo | `youtube_transcript_read` (`start`/`end` en segundos) |
+| Transcribir / encolar ASR | `youtube_transcript` (+ `youtube_transcript_status` si devuelve `processing`) |
+| Diagnóstico (proveedores, breakers) | `youtube_health` |
+
+Proyecto piloto: `Proyecto AI/youtube-mcp-piloto` (solo `opencode.json`
+con este bloque). Ver `docs/PLAN_PUENTE_MULTIPROYECTO.md` (fases P0–P3).
 
 ## Uso
 

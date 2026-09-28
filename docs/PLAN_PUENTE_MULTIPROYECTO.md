@@ -72,3 +72,19 @@ piloto); el agente deja todo preparado.
 - `.ps1` por asociación se abre en Bloc de notas → invocar siempre
   con `powershell -File` (LECCIONES 26/09).
 - Rate-limit 429 de YouTube ante ráfagas sin pausa.
+
+## 5. Evidencia P1/P2 (28/09/2026)
+
+- **P1** (`1m7fTsJzoao`, caché): `summary` completed (3 secciones +
+  overall, todas con citas `&t=` válidas) + `search "azulejos"` →
+  1 chunk citado (`&t=8s`), sin texto entero. Verde.
+- **P2** (`KS8M0xAna7s`, tortilla 104s, nuevo con red): `transcript`
+  completed vía captions `es` auto sin intervención; `summary`
+  completed con citas; `search "cuantos huevos por kilo patata"` →
+  el chunk con la respuesta (6-8 huevos por kilo).
+- **Matices (honestos):** (1) el `summary` extractivo devuelve
+  fragmentos de oración truncados ("seis, ocho huevos y un par de
+  llamitas a…") — un agente externo necesita el `read` del tramo
+  para accionarlo; (2) en videos cortos hay un solo chunk, así que
+  `search` devuelve la transcripción entera (el criterio §8 solo
+  aplica a videos largos).
