@@ -198,7 +198,10 @@ def youtube_transcript_status(
         "Lee un tramo de la transcripción de un video ya extraída "
         "(captions o ASR). start/end en SEGUNDOS (rango del video), "
         "max_chars tope de caracteres del texto devuelto (mínimo 1 "
-        "segmento). Ideal para videos largos sin devolver todo el texto."
+        "segmento). Ideal para videos largos sin devolver todo el texto. "
+        "Úsalo para verificar tramos dudosos (errores típicos de "
+        "auto-captions) antes de redactar: cita textual, no reinterpretes "
+        "lo dudoso."
     ),
 )
 def youtube_transcript_read(
@@ -303,7 +306,10 @@ def youtube_transcript_read(
         "chunks con BM25) y devuelve los fragmentos más relevantes con "
         "cita temporal https://www.youtube.com/watch?v=ID&t=620s. Requiere "
         "que el video ya tenga transcripción (si no, llamar antes "
-        "youtube_transcript). La primera búsqueda indexa el video (lazy)."
+        "youtube_transcript). La primera búsqueda indexa el video (lazy). "
+        "En tus entregables, cita los fragmentos con su url &t=; no "
+        "completes ni reinterpretes palabras que parezcan errores de "
+        "auto-caption sin verificar el tramo con youtube_transcript_read."
     ),
 )
 def youtube_transcript_search(
@@ -435,7 +441,12 @@ def youtube_health() -> dict[str, Any]:
         "transcripto: secciones temporales con las oraciones más "
         "representativas + overall del video, cada oración con cita "
         "https://www.youtube.com/watch?v=ID&t=620s. Requiere "
-        "transcripción previa (si no, llamar antes youtube_transcript)."
+        "transcripción previa (si no, llamar antes youtube_transcript). "
+        "Al redactar a partir de este resumen, conserva las citas &t= "
+        "junto a cada afirmación; si una oración parece truncada o "
+        "corrupta (típico de auto-captions), verifica el tramo con "
+        "youtube_transcript_read y cita textual en vez de parafrasear "
+        "lo dudoso."
     ),
 )
 def youtube_transcript_summary(
