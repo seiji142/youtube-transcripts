@@ -44,7 +44,10 @@ mcp = MCPServer(
     version="0.1.0",
 )
 
-DB_PATH = Path("data") / "youtube.db"
+# Caché/jobs/índice anclados al REPO, no al cwd: opencode lanza el MCP
+# con cwd del proyecto consumidor y Path("data") caería ahí (hallazgo P4:
+# el piloto acumuló su propio youtube.db de 60KB).
+DB_PATH = Path(__file__).resolve().parent / "data" / "youtube.db"
 
 _cache = TranscriptCache(db_path=DB_PATH)
 _service = YouTubeService(cache=_cache)

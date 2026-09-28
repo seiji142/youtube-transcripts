@@ -94,8 +94,22 @@ truncados o corruptos (típico de auto-captions), verificá el tramo con
 `youtube_transcript_read` y citá textual en vez de reinterpretar lo
 dudoso (caso "yemitas" → "cebollas grandes").
 
-Proyecto piloto: `Proyecto AI/youtube-mcp-piloto` (solo `opencode.json`
-con este bloque). Ver `docs/PLAN_PUENTE_MULTIPROYECTO.md` (fases P0–P3).
+**Paso 2 — Capa de comportamiento (recomendada).** Registrar el MCP no
+alcanza: sin instrucciones de rol, los agentes inventan datos que el
+video no dice, no citan momentos y preguntan en vez de ejecutar
+(evidencia P3). Copiar `docs/plantilla-consumidor/` (`AGENTS.md` +
+`.ai/`) al proyecto consumidor y agregarlo a su `opencode.json`:
+
+```json
+"instructions": ["AGENTS.md", ".ai/system.md", ".ai/context.md"]
+```
+
+La plantilla es lean (3 archivos); si el consumidor necesita más
+(reglas de código, memoria, etc.), sumar los que falten.
+
+Proyecto piloto: `Proyecto AI/youtube-mcp-piloto` (`opencode.json` con
+este bloque + capa de comportamiento). Ver
+`docs/PLAN_PUENTE_MULTIPROYECTO.md` (fases P0–P4).
 
 ## Uso
 

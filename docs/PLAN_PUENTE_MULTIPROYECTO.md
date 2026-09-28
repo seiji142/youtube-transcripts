@@ -65,6 +65,33 @@ cita fragmentos; se registra qué tools usó y dónde dudó.
 *Nota:* este paso lo ejecuta el usuario (requiere abrir sesión en el
 piloto); el agente deja todo preparado.
 
+### Fase P4 — Capa de comportamiento del consumidor (guiada por `personalizar-comportamiento-01`)
+
+Motivo: en P3 las descriptions de las tools (señal débil) no
+alcanzaron — el agente inventó cantidades, no citó y preguntó en vez
+de ejecutar. El mecanismo fuerte validado en
+`personalizar-comportamiento-01` (5/5) es el **system prompt del
+consumidor**.
+
+- **P4a — Piloto:** crear en `youtube-mcp-piloto/` los 3 archivos de
+  `docs/plantilla-consumidor/` (`AGENTS.md`, `.ai/system.md`,
+  `.ai/context.md`) y wire en `opencode.json`:
+  `"instructions": ["AGENTS.md", ".ai/system.md", ".ai/context.md"]`.
+- **P4b — Plantilla + README:** carpeta `docs/plantilla-consumidor/`
+  en este repo (fuente única) y "paso 2" en la sección "Consumir
+  desde otros proyectos" del README.
+
+*Criterio:* JSON válido en el piloto, plantilla versionada, PR verde.
+
+- **P4c — Validación A/B (ejecuta el usuario):** sesión nueva en el
+  piloto con el mismo prompt de P3 (`KS8M0xAna7s`) y contrastar contra
+  los 3 hallazgos baseline (§6). Evidencia en §7.
+
+*Nota honesta:* el baseline P3 corrió con descriptions viejas (PR #10
+se aplicó después); el A/B mide "capa nueva + descripciones
+reforzadas" vs. baseline — suficiente para decidir, menos puro que un
+A/B aislado.
+
 ## 4. Riesgos conocidos
 
 - Ruta del `.venv` en el snippet (primer sospechoso si el piloto no
@@ -118,3 +145,25 @@ Prompt sin contexto: "Haz lo que dice este video:
 - **Mejoras futuras:** (a) que los entregables conserven citas `&t=`;
   (b) que `search`/`read` conserven texto crudo y el agente cite en
   vez de parafrasear lo dudoso.
+
+## 7. Evidencia P4c — A/B con capa de comportamiento (fecha: ____)
+
+Baseline = §6. Mismos 3 criterios:
+
+| Criterio | P3 (sin capa) | P4c (con capa) |
+|----------|---------------|----------------|
+| Citas `&t=` en el entregable | ✗ | ____ |
+| "Cebollas" inventada (yemitas) | ✗ | ____ |
+| Ejecutó vs. ofreció menú | ✗ (preguntó) | ____ |
+
+Detalle de la sesión P4c: ____
+
+## 8. Decisiones de diseño (Fase P4, 28/09/2026)
+
+| Decisión | Elección | Por qué |
+|----------|----------|---------|
+| Scaffold del consumidor | **Lean: 3 archivos** (`AGENTS.md`, `system.md`, `context.md`), no los 6 de `personalizar-comportamiento-01` | El piloto es consumidor, no proyecto de desarrollo; menos archivos = más señal. Si hace falta, sumar (`rules.md`, `commands.md`, `MEMORY.md`) después |
+| Dónde vive la plantilla | **Carpeta copiable** `docs/plantilla-consumidor/` | Fuente única de verdad; el README solo referencia (no duplica texto que envejezca) |
+| Procedencia | Framework `personalizar-comportamiento-01` (rol, jerarquía, postura epistémica SÉ/NO SÉ, "verifica antes de afirmar") adaptado | Validado 5/5 allí; mismo scaffold que ya usa este repo |
+| Meccanismo de moldeado | **System prompt del consumidor** + descriptions de tools como complemento | Evidencia P3: descriptions (señal débil) no bastaron; PR #10 (refuerzo de descriptions) queda como capa complementaria, no principal |
+| Reglas nuevas propias | 4 reglas de fidelidad P3 (citas `&t=`, citar textual lo dudoso con `read`, ejecutar sin menú, no fabricar datos) | Directamente derivadas de los 3 hallazgos de P3 |
