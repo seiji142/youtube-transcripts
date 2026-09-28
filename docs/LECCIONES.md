@@ -25,9 +25,18 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 **Comando:** `Remove-Item -LiteralPath "C:\...\youtube-mcp-piloto\data\youtube.db"` (2 intentos)
 **Error/Warning:** `El proceso no puede obtener acceso al archivo ... porque está siendo utilizado en otro proceso.` (`IOException`, exit ≠ 0)
 **Causa raíz:** un `mcp_server.py` con **código pre-fix** (PID 16092, arrancado 28/09 13:27 con cwd del piloto) mantiene la conexión SQLite abierta a esa caché. Evidencia: `Get-CimInstance Win32_Process` muestra 2 instancias de `mcp_server.py` (PIDs 4928 desde 26/09 = sesión de este repo; 16092 desde 28/09 = sesión del piloto). El fix de `DB_PATH` (commit `8bb8d23`) hace que servidores nuevos nunca toquen ese archivo, pero no cierra los ya vivos.
-**Fix:** diferido — requiere cerrar la sesión del piloto (mata el PID 16092) y reintentar `Remove-Item`. NO matar procesos sin confirmación: 4928 es el MCP de esta sesión.
-**Verificación:** pendiente (re-`Remove-Item` → `Test-Path = False`).
-**Lección:** procesos MCP largamente vivos retienen locks de SQLite; al purgar artefactos, primero diagnosticar el holder (`Win32_Process`) y matar SOLO los procesos cuyo cwd/propietario se identificó.
+**Fix:** cerrar la ventana del piloto **no** basta: el proceso MCP
+huérfano (PID 16092 + hijo 11096) sobrevive bajo el desktop app.
+Diagnóstico con evidencia: `psutil` (instalado temporal) mostró
+`p.cwd()` — 16092/11096 en `youtube-mcp-piloto`, 4928/8340 en el repo
+(los de esta sesión, NO tocados). `Stop-Process 16092,11096` +
+`Remove-Item` → OK.
+**Verificación:** `Test-Path ... youtube.db = False`; `psutil`
+desinstalado del `.venv`.
+**Lección:** procesos MCP largamente vivos retienen locks de SQLite;
+al purgar artefactos, primero diagnosticar el holder con evidencia
+(`Win32_Process` + `cwd` vía `psutil`) y matar SOLO los procesos cuyo
+propietario se identificó. Cerrar la ventana no mata al hijo MCP.
 
 ---
 
