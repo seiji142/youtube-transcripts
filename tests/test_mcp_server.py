@@ -57,6 +57,17 @@ def _mock_no_captions(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcp_server._service, "get_transcript", _raise)
 
 
+def test_db_path_anclado_al_repo_no_al_cwd() -> None:
+    """La caché vive en el repo, no en el cwd del proyecto consumidor.
+
+    Regresión P4: DB_PATH relativo hacía que cada consumidor creara su
+    propio data/youtube.db (el piloto acumuló 60KB).
+    """
+    repo_root = Path(mcp_server.__file__).resolve().parent
+    assert mcp_server.DB_PATH.is_absolute()
+    assert mcp_server.DB_PATH == repo_root / "data" / "youtube.db"
+
+
 class TestRegistroTools:
     def test_tool_registrada(self) -> None:
         async def _names() -> list[str]:

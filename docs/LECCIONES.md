@@ -19,6 +19,30 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-09-28 — `Copy-Item -LiteralPath` con wildcard no copia (silencioso)
+
+**Tipo:** C (output inesperado — cambia el plan de comandos)
+**Comando:** `Copy-Item -LiteralPath "...\docs\plantilla-consumidor\.ai\*" -Destination "...\youtube-mcp-piloto\.ai\"`
+**Error/Warning:** sin stderr visible; el destino `.ai/` quedó **vacío** (detectado con `Test-Path ... = False` tras un listado que no mostraba los archivos).
+**Causa raíz:** `-LiteralPath` no expande comodines — `...\.ai\*` se trató como ruta literal inexistente. Evidencia: el re-copy con `-LiteralPath` por **archivo explícito** (system.md, context.md) devolvió `True/True`.
+**Fix:** copias con wildcard → usar `-Path`, no `-LiteralPath`.
+**Verificación:** `Test-Path` True en ambos archivos destino.
+**Lección:** tras cualquier `Copy-Item`, verificar destino con `Test-Path`; `-LiteralPath` = sin globbing.
+
+---
+
+## 2026-09-28 — `DB_PATH` relativo al cwd: cada consumidor creaba su propia caché
+
+**Tipo:** C (output inesperado — cambia el plan, fix en código)
+**Comando:** `Get-ChildItem -Recurse youtube-mcp-piloto` (inspección pre-P4)
+**Error/Warning:** el piloto contenía `data\youtube.db` de 61440 bytes — una caché creada durante P3 en el proyecto consumidor.
+**Causa raíz:** `mcp_server.py:47` tenía `DB_PATH = Path("data") / "youtube.db"` (relativa); opencode lanza el MCP con cwd del consumidor → SQLite escribió en `youtube-mcp-piloto/data/`. Contradecía la claim del README ("caché en `data/` de este repo").
+**Fix:** `DB_PATH = Path(__file__).resolve().parent / "data" / "youtube.db"` (anclado al repo) + test `test_db_path_anclado_al_repo_no_al_cwd`.
+**Verificación:** suite completa en verde (incluye test nuevo).
+**Lección:** rutas de persistencia en servidores lanzados por un host externo → SIEMPRE anclar a `__file__`, nunca al cwd.
+
+---
+
 ## 2026-09-26 — `.ps1` ejecutado por asociación se abre en Bloc de notas: salida vacía con EXIT 0
 
 **Tipo:** C (output inesperado — cambia el plan de invocación)
