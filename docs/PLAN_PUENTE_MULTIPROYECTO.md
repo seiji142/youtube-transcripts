@@ -88,3 +88,33 @@ piloto); el agente deja todo preparado.
   para accionarlo; (2) en videos cortos hay un solo chunk, así que
   `search` devuelve la transcripción entera (el criterio §8 solo
   aplica a videos largos).
+
+## 6. Evidencia P3 — sesión ingenua en el piloto (28/09/2026)
+
+Piloto `youtube-mcp-piloto` (solo `opencode.json` con el bloque MCP).
+Prompt sin contexto: "Haz lo que dice este video:
+`https://www.youtube.com/watch?v=KS8M0xAna7s`".
+
+- El agente descubrió las tools, identificó el contenido (tortilla de
+  patata en sartén de acero inoxidable) y generó
+  `tortilla-de-patata.md` (71 líneas): pasos, tiempos (5 min, 5–10,
+  40 segundos), temperaturas (8 y 6 de 10), cantidades (6–8 huevos,
+  media cucharada), frases literales y resultado final. Todo fundado
+  en el video. Respondió además el detalle pedido (6–8 huevos por
+  kilo). **P3 funcionalmente verde.**
+- **Hallazgo 1 — el agente pide confirmación antes de accionar.**
+  Ante "haz lo que dice", primero ofreció opciones (archivo / plan /
+  otro) en vez de ejecutar. Conducta del agente, no del puente.
+- **Hallazgo 2 — cero citas de momentos.** Ningún `&t=` en todo el
+  archivo; un solo link al video. Las tools devuelven las citas, el
+  agente no las traslada al entregable.
+- **Hallazgo 3 — propaga y "repara" errores de auto-caption.**
+  El video dice "un par de **yemitas**" (captionado "llamitas"); el
+  archivo pone "1–2 / un par de cebollas **grandes**" (líneas 11 y
+  71) — cantidad inventada. En la línea 45 el mismo agente escribió
+  bien "las yemitas": interpreta y a la vez inventa. Otro caso menor
+  (línea 20): "para que no se oxide" donde el caption roto dice "no
+  se nos el mace". Ninguna capa marcó lo dudoso.
+- **Mejoras futuras:** (a) que los entregables conserven citas `&t=`;
+  (b) que `search`/`read` conserven texto crudo y el agente cite en
+  vez de parafrasear lo dudoso.
