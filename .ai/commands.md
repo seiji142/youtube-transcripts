@@ -5,7 +5,7 @@
 | Comando | Descripcion |
 |---------|-------------|
 | `pip install -r requirements.txt` | Instalar dependencias |
-| `pytest tests/ -v` | Ejecutar tests (usar `run_tests`) |
+| `pytest tests/ -v` | Ejecutar tests (usar `brain-ai_run_tests`) |
 | `winget install Gyan.FFmpeg` | Instalar FFmpeg en Windows |
 
 ## Git
@@ -65,6 +65,6 @@ Todo PR y merge pasa por `scripts/gh-publish.ps1` (desde la raiz del repo).
 
 ## Uso
 
-Los comandos de tests/build se ejecutan con `run_tests` / `run_command`
-(no usar `run_tests` para builds). Fuente del flujo git/PR:
+Los comandos de tests/build se ejecutan con `brain-ai_run_tests` / `brain-ai_run_command`
+(no usar `brain-ai_run_tests` para builds). Fuente del flujo git/PR:
 `seiji142/gitflow-scaffold` (template 2026.09.25).

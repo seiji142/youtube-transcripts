@@ -68,7 +68,7 @@ Resultados con `{start, end, text}` + metadatos (idioma, fuente, motor, fecha).
 | Comando | Descripcion |
 |---------|-------------|
 | `pip install -r requirements.txt` | Instalar dependencias |
-| `pytest tests/ -v` | Ejecutar tests (vía `run_tests`) |
+| `pytest tests/ -v` | Ejecutar tests (vía `brain-ai_run_tests`) |
 | `winget install Gyan.FFmpeg` | Instalar FFmpeg en Windows |
 
 ## Ramas del Proyecto
