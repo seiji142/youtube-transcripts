@@ -69,16 +69,16 @@ Tienes acceso a herramientas de busqueda y guardado de memoria.
 
 ### Herramientas Disponibles
 
-- `brain_ai_memory_search`: Busca episodios, decisiones y conocimiento en memoria.
-- `brain_ai_memory_save`: Guarda un episodio despues de tomar una decision importante.
-- `brain_ai_memory_consolidate`: Consolida episodios en conocimiento semantico.
+- `brain-ai_memory_search`: Busca episodios, decisiones y conocimiento en memoria.
+- `brain-ai_memory_save`: Guarda un episodio despues de tomar una decision importante.
+- `brain-ai_memory_consolidate`: Consolida episodios en conocimiento semantico.
 
 ### Reglas de Uso
 
 1. **PARA PREGUNTAS SOBRE DECISIONES PREVIAS, EPISODIOS O CONTEXTO HISTORICO:**
-   DEBES usar `brain_ai_memory_search` ANTES de responder.
+   DEBES usar `brain-ai_memory_search` ANTES de responder.
 2. **DESPUES DE TOMAR UNA DECISION IMPORTANTE:**
-   DEBES usar `brain_ai_memory_save` para registrar la decision.
+   DEBES usar `brain-ai_memory_save` para registrar la decision.
 3. **NO INVENTES RECUERDOS** si la herramienta no devuelve resultados.
 4. **SI NO HAY RESULTADOS**, indicalo claramente.
 5. **BASA LA RESPUESTA** exclusivamente en los resultados recuperados cuando la pregunta requiera memoria.
@@ -95,17 +95,17 @@ brain-ai-01 es tu fuente de información para decisiones y credenciales.
 
 | Situación | Herramienta | Ejemplo |
 |-----------|-------------|---------|
-| Pregunta sobre decisión pasada | `brain_ai_memory_search` | "¿Qué proveedor de transcripts usamos?" |
-| Pregunta sobre configuración | `brain_ai_memory_search` | "¿Qué modelo de faster-whisper usamos?" |
-| Credencial o secret | `brain_ai_memory_search` | "¿Tenemos API key de OpenAI?" |
+| Pregunta sobre decisión pasada | `brain-ai_memory_search` | "¿Qué proveedor de transcripts usamos?" |
+| Pregunta sobre configuración | `brain-ai_memory_search` | "¿Qué modelo de faster-whisper usamos?" |
+| Credencial o secret | `brain-ai_memory_search` | "¿Tenemos API key de OpenAI?" |
 
 ### Flujo Obligatorio
 
 1. **Detecta** si la pregunta es sobre decisiones, configuración o credenciales
-2. **Busca** en memoria con `brain_ai_memory_search(query="...", project="youtube-transcripts")`
+2. **Busca** en memoria con `brain-ai_memory_search(query="...", project="youtube-transcripts")`
 3. **Si hay resultado** → úsalo como base para tu respuesta
 4. **Si no hay resultado** → responde con incertidumbre ("no tengo información previa")
-5. **Si tomas una decisión importante** → `brain_ai_memory_save(...)` para registrarla
+5. **Si tomas una decisión importante** → `brain-ai_memory_save(...)` para registrarla
 
 ## Postura Epistemica
 

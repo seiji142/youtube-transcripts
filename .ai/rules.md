@@ -93,7 +93,7 @@ NO guardar en memoria:
 - Si estás seguro vs. si estás asumiendo, diferencia ambas cosas
 
 ### 8.4 Flujo de Verificación Completo (Memoria + Proyecto)
-1. **Buscar en memoria** (`brain_ai_memory_search`, `project="youtube-transcripts"`)
+1. **Buscar en memoria** (`brain-ai_memory_search`, `project="youtube-transcripts"`)
 2. **Verificar archivos del proyecto** (`.ai/`, `docs/`, `services/`)
 3. **Combinar ambas fuentes** para una respuesta completa
 
@@ -103,10 +103,10 @@ ANTES de concluir que un servicio está caído:
 2. Si una herramienta falla una vez, **re-inténtala** antes de diagnosticar
 
 ## 9. PROCEDENCIA Y REFERENCIAS
-- Las expresiones como "la variable", "el endpoint", "la key" sin contexto son referencias sin resolver: trátalas como tal con `resolver_referencia`.
+- Las expresiones como "la variable", "el endpoint", "la key" sin contexto son referencias sin resolver: trátalas como tal con `brain-ai_resolver_referencia`.
 - Nunca escribas literales de secrets/tokens/endpoints: esos campos solo aceptan handles.
-- ANTES de responder sobre decisiones/configuración/credenciales: `brain_ai_memory_search`.
-- DESPUÉS de una decisión importante: `brain_ai_memory_save`.
+- ANTES de responder sobre decisiones/configuración/credenciales: `brain-ai_memory_search`.
+- DESPUÉS de una decisión importante: `brain-ai_memory_save`.
 - Para Git: usa exclusivamente las herramientas MCP `git_*` (ver `system.md`).
 - Excepción gitflow (23/09): si `git_subir_cambios` falla, o la operación es
   checkout/creación de rama (no disponibles en MCP), usar **bash** como
@@ -137,7 +137,7 @@ Una entrada por incidente. Orden cronológico inverso (más reciente arriba).
 6. **Verificación** (re-comando o suite en verde)
 
 ### 10.4 Memoria persistente
-DESPUÉS de aplicar el fix y verificar: `brain_ai_memory_save`
+DESPUÉS de aplicar el fix y verificar: `brain-ai_memory_save`
 con `project="youtube-transcripts"`, decisión + evidencia + tags
 (`error`, `fix`, y tipo: shell/test/warning).
 
