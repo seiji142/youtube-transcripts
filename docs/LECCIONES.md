@@ -19,6 +19,42 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-10-29 — `options` de provider no se migra a `body`, se migra a `settings`
+
+**Tipo:** C (cambio de plan)
+**Comando:** `opencode debug config` sobre cuatro variantes en directorios temporales (`provider`+`options`, `providers`+`body`, `providers`+`settings`, `provider`+`body`)
+**Error/Warning:** el `opencode.json` pendiente de este repo traía `providers.groq.models.<m>.body`, copiado de una suposición previa (`docs/specs/regla-clasificacion-cambios.md` §2 decía `options` -> `body`). La doc v2 no lo desmiente; solo la config efectiva lo distingue.
+**Causa raíz:** el auto-migrador de OpenCode mapea `options` a **`settings`**: la variante v1 devolvió `{"settings": {"temperature": 0.7, "max_tokens": 4000}}`. La variante con `body` devuelve `{"body": {...}}`, que se fusiona en el request HTTP crudo: misma forma, semántica distinta. `provider` (singular) en v2 se descarta por completo (`providers` en la config efectiva).
+**Fix:** el archivo migrado usa `providers.groq.models."openai/gpt-oss-20b".settings`; el spec de la migración declara el hallazgo y §6 compara `model_settings` contra el v1 auto-migrado.
+**Verificación:** `opencode debug config` -> `model_settings` **idéntico** entre v1 auto-migrado y v2 explícito; `pytest tests/ -m "not integration" -q` = 335 passed, 8 deselected; `ruff check .` = All checks passed.
+**Lección:** para traducir claves de esquema, la fuente de verdad es la config efectiva del archivo v1 auto-migrado, no el nombre que sugiere el schema. `settings` != `body`.
+
+---
+
+## 2026-10-29 — `Set-Content -Encoding utf8` (PowerShell 5.1) agrega BOM y rompe el JSON
+
+**Tipo:** A (error duro)
+**Comando:** `Set-Content .\opencode.json -Encoding utf8` y luego `python -m json.tool opencode.json`
+**Error/Warning:** `Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)` (exit 1)
+**Causa raíz:** en PowerShell 5.1 `-Encoding utf8` emite BOM. `json.loads` de `scripts/ci_checks.py` lee con `encoding="utf-8"` y rechaza el BOM, así que el gate local cae por un artefacto del shell y no por el contenido.
+**Fix:** reescribir sin BOM (`Path.write_text(..., encoding="utf-8", newline="\n")`) y, para archivos nuevos, usar la herramienta de escritura en vez de `Set-Content`.
+**Verificación:** primeros bytes `123,10,32` (`{`, LF, espacio); `python -m json.tool` exit 0; `opencode debug config` parsea el documento.
+**Lección:** en este repo ningún archivo JSON se genera con `Set-Content -Encoding utf8`; si se usa, verificar los 3 primeros bytes antes de commitear.
+
+---
+
+## 2026-10-29 — `git checkout -b` con `2>&1` dispara `NativeCommandError` aunque exit sea 0
+
+**Tipo:** B (warning)
+**Comando:** `git checkout -b feature/migracion-esquema-opencode 2>&1`
+**Error/Warning:** `git : Switched to a new branch 'feature/migracion-esquema-opencode'` + `CategoryInfo : NotSpecified` + `FullyQualifiedErrorId : NativeCommandError`
+**Causa raíz:** PowerShell 5.1 convierte cualquier línea de **stderr** de un ejecutable nativo en registro de error cuando se redirige con `2>&1`; git escribe el cambio de rama en stderr por diseño. El comando terminó con exit 0 y la rama existe.
+**Fix:** ninguna corrección necesaria; el flujo de ramas ya es excepción gitflow declarada (`rules.md` §9).
+**Verificación:** `git status --short --branch` -> `## feature/migracion-esquema-opencode`.
+**Lección:** al interpretar salidas de git en PowerShell, el `CategoryInfo` no implica fallo: validar `$LASTEXITCODE` y el estado real del repo.
+
+---
+
 ## 2026-09-28 — `Remove-Item` de caché huérfana: archivo bloqueado por proceso MCP pre-fix
 
 **Tipo:** A (error duro — `RemoveFileSystemItemIOError`)

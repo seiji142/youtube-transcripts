@@ -1,11 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "groq/openai/gpt-oss-20b",
-  "provider": {
+  "providers": {
     "groq": {
       "models": {
         "openai/gpt-oss-20b": {
-          "options": {
+          "settings": {
             "temperature": 0.7,
             "max_tokens": 4000
           }
@@ -21,33 +21,31 @@
     ".ai/agents.md",
     ".ai/MEMORY.md"
   ],
-  "permission": {
-    "bash": "allow",
-    "webfetch": "ask",
-    "write": "ask",
-    "edit": "ask"
-  },
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "allow" },
+    { "action": "edit", "resource": "*", "effect": "allow" },
+    { "action": "webfetch", "resource": "*", "effect": "allow" }
+  ],
   "mcp": {
-    "git_publisher": {
-      "type": "local",
-      "command": [
-        "C:\\Users\\seiji\\.config\\opencode\\herramientas\\.venv\\Scripts\\python.exe",
-        "C:\\Users\\seiji\\.config\\opencode\\herramientas\\git_tool.py"
-      ],
-      "enabled": true
-    },
-    "brain-ai": {
-      "type": "local",
-      "command": ["python", "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\brain-ai-01\\mcp_bridge.py"],
-      "enabled": true
-    },
-    "youtube-transcripts": {
-      "type": "local",
-      "command": [
-        "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\.venv\\Scripts\\python.exe",
-        "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\mcp_server.py"
-      ],
-      "enabled": true
+    "servers": {
+      "git_publisher": {
+        "type": "local",
+        "command": [
+          "C:\\Users\\seiji\\.config\\opencode\\herramientas\\.venv\\Scripts\\python.exe",
+          "C:\\Users\\seiji\\.config\\opencode\\herramientas\\git_tool.py"
+        ]
+      },
+      "brain-ai": {
+        "type": "local",
+        "command": ["python", "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\brain-ai-01\\mcp_bridge.py"]
+      },
+      "youtube-transcripts": {
+        "type": "local",
+        "command": [
+          "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\.venv\\Scripts\\python.exe",
+          "C:\\Users\\seiji\\OneDrive\\Documentos\\Proyecto AI\\youtube-transcripts\\mcp_server.py"
+        ]
+      }
     }
   }
 }
