@@ -19,6 +19,38 @@ Regla de obligatorio cumplimiento: ver `.ai/rules.md` §10.
 
 ---
 
+## 2026-10-29 — Worktree con la carpeta vacía que no se deja borrar: handle de cwd de un MCP huérfano
+
+**Tipo:** A (error duro — `RemoveFileSystemItemIOError`)
+**Comando:** `opencode.worktree_remove(directory="C:\dev\wt\migracion-esquema-youtube-transcripts")` y luego
+`Remove-Item -LiteralPath "C:\dev\wt\migracion-esquema-youtube-transcripts" -Force`
+**Error/Warning:** `Unable to remove worktree C:\dev\wt\migracion-esquema-youtube-transcripts.` y, en el borrado manual,
+`Remove-Item : No se puede quitar el elemento ...: El proceso no puede obtener acceso al archivo ... porque está siendo
+utilizado en otro proceso.` (`FullyQualifiedErrorId: RemoveFileSystemItemIOError`). La carpeta estaba **vacía**
+(`items: 0`) y **ya no figuraba** en `git worktree list`: no había nada que perder, y aun así no se dejaba borrar.
+**Causa raíz:** dos procesos `git_tool.py` (servidores MCP del propio OpenCode) con **`cwd` dentro del worktree**
+retenían un handle del directorio, aunque la carpeta ya estuviera vacía. Evidencia: `psutil`, leyendo `p.cwd()`,
+devolvió
+`PID 3720` (hijo `PID 4264`) con `cwd=C:\dev\wt\migracion-esquema-youtube-transcripts` y padre común `13664` (el
+servidor de OpenCode). No eran `git_publisher` de la sesión: los MCP de esta sesión tenían `cwd` en la carpeta
+principal. Se repitió **dos veces** en la misma sesión (el segundo caso, `sitio-viajes`, con `PID 1540`/`11696`): cada
+`opencode debug config` que se corrió para verificar la migración dejó sus MCP vivos apuntando a ese directorio.
+Detalle adicional medido: había **~45 procesos `git_tool.py`** vivos acumulados de todas las corridas de
+`debug config` de la sesión (cwd en `%TEMP%\opencode\yt-forms\*`, `schema-forms\*`, etc.).
+**Fix:** instalar `psutil` temporal en `C:\Users\seiji\.config\opencode\herramientas\.venv`, listar los procesos cuyo
+`p.cwd()` cae dentro del worktree, matar **solo esos PID** (los que tenían `cwd` en la carpeta principal se dejaron
+intactos para no romper `git_publisher`) y recién entonces `Remove-Item`. `psutil` desinstalado al final.
+**Verificación:** `Test-Path` del worktree = `False`; `git worktree list` solo muestra `develop`; `git_ver_estado` =
+`nothing to commit, working tree clean`; `git_publisher` de la sesión siguió respondiendo. El inventario de
+`opencode.worktree_list` conservó una fila obsoleta: no existe en disco, ni en `.git\worktrees`, ni en ningún JSON de
+`~/.config/opencode` ni de `%APPDATA%` → es caché en memoria del servidor y desaparece al reiniciar.
+**Lección:** "carpeta vacía que no se deja borrar" en Windows = handle de **directorio** por el `cwd` de un proceso, no
+un archivo abierto (el caso del 28/09 era un lock de SQLite). `opencode debug config` arranca MCP con el `cwd` del
+directorio donde se invoca: no borrar un worktree en la misma sesión donde corrió sin cerrar antes esos procesos.
+Diagnosticar con `p.cwd()` y matar solo los identificados.
+
+---
+
 ## 2026-10-29 — `options` de provider no se migra a `body`, se migra a `settings`
 
 **Tipo:** C (cambio de plan)
